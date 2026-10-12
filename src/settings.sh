@@ -1,0 +1,15 @@
+#!/bin/bash
+# Resources/settings.sh: read or change the app settings (the launcher's Features menu
+# uses this; the maintenance menu shares the same settings.conf).
+#   settings.sh              print the effective settings as KEY=value lines
+#   settings.sh KEY on|off   change one setting and save
+. "$(dirname "$0")/common.sh"
+if [ $# -eq 2 ]; then
+  case "$1=$2" in
+    X87=on|X87=off|RETINA=on|RETINA=off|FPS_HUD=on|FPS_HUD=off|GAME_MODE=on|GAME_MODE=off) printf -v "$1" %s "$2" ;;
+    D3D9=d9mt|D3D9=wined3d) D3D9=$2 ;;
+    *) echo "unsupported setting: $1=$2" >&2; exit 2 ;;
+  esac
+  swgl_save_settings
+fi
+printf 'D3D9=%s\nX87=%s\nRETINA=%s\nFPS_HUD=%s\nGAME_MODE=%s\n' "$D3D9" "$X87" "$RETINA" "$FPS_HUD" "$GAME_MODE"

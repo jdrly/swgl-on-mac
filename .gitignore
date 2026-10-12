@@ -1,0 +1,12 @@
+# Build outputs and caches
+/dist/
+/release/
+/.cache/
+
+# Local scratch (Wine source trees, profiling, archived experiments)
+/work/
+
+# SWG Legends' launcher files (downloaded by the app; not ours to redistribute)
+/SWGLegendsLauncher/
+
+.DS_Store
