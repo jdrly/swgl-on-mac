@@ -205,6 +205,8 @@ struct WelcomeView: View {
           .font(.callout)
           .foregroundStyle(.tertiary)
 
+        NoticeCard()
+
         StatusCard(setup: setup)
           .padding(.top, 6)
 
@@ -312,12 +314,36 @@ struct Buttons: View {
   }
 }
 
+// SWG Legends' position on third-party tools, and where support for this app comes from.
+struct NoticeCard: View {
+  var body: some View {
+    HStack(alignment: .top, spacing: 12) {
+      Image(systemName: "info.circle.fill")
+        .font(.title2)
+        .foregroundStyle(.secondary)
+      VStack(alignment: .leading, spacing: 8) {
+        Text("SWGL on Mac is an unofficial community project, not made, endorsed or supported by "
+             + "the SWG Legends team. SWG Legends doesn't support mods or clients that don't come "
+             + "directly from them, so you use it at your own risk.")
+        Text("For help, contact Pharaphobia on Discord or open a GitHub issue. Please don't send "
+             + "logs or bug reports about SWGL on Mac to the SWG Legends team.")
+      }
+      .fixedSize(horizontal: false, vertical: true)
+    }
+    .font(.callout)
+    .foregroundStyle(.secondary)
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .glassEffect(.regular, in: .rect(cornerRadius: 18))
+  }
+}
+
 struct Footer: View {
   let credits: [String: String]
 
   var body: some View {
     VStack(spacing: 4) {
-      Text("Unofficial. Not affiliated with or endorsed by the SWGL team.")
+      Text("Unofficial. Not made, endorsed or supported by the SWG Legends team.")
       HStack(spacing: 6) {
         Text("Developed by \(credits["author"] ?? "Jan Drlý")")
         if let link {

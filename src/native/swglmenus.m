@@ -116,7 +116,10 @@
                             NSParagraphStyleAttributeName: centered };
     NSMutableAttributedString *credits = [[NSMutableAttributedString alloc]
         initWithString:[NSString stringWithFormat:@"Unofficial client for macOS\n"
-                                                   "Developed by %@\n", app[@"author"] ?: @"?"]
+                                                   "Developed by %@\n\n"
+                                                   "Not supported by the SWG Legends team.\n"
+                                                   "For help: Pharaphobia on Discord or GitHub.\n",
+                                                   app[@"author"] ?: @"?"]
             attributes:body];
     for (NSString *key in @[@"repo", @"github"]) {
         NSString *url = app[key];
@@ -189,7 +192,8 @@
                 NSString *folder = [NSFileManager.defaultManager displayNameAtPath:zip.stringByDeletingLastPathComponent];
                 alert.messageText = @"Logs collected";
                 alert.informativeText = [NSString stringWithFormat:
-                    @"%@ is in your %@ folder. Send it along with a short description of the problem.",
+                    @"%@ is in your %@ folder. Send it with a short description of the problem to "
+                     "Pharaphobia on Discord or attach it to a GitHub issue, not to the SWG Legends team.",
                     zip.lastPathComponent, folder];
                 [alert addButtonWithTitle:@"Show in Finder"];
             } else {
