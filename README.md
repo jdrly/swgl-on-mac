@@ -129,6 +129,20 @@ patched driver (`patches/winemac-swg.patch`):
 - treats a `SetCursorPos` to a position the cursor just had as a no-op, as on Windows, and
   keeps the server cursor where it is so DirectInput does not count the move twice.
 
+A second patch (`patches/winemac-input.patch`) makes mouse-look smooth at any frame rate. Stock
+Wine queues mouse moves for the game's thread, which picks them up once per frame, and AppKit
+itself coalesces mouse moves to one event per display refresh and delivers it about a refresh
+late. Since SWG reads DirectInput once per frame, each frame then got zero, one or two
+refreshes' worth of motion, so turning juddered and changed with every ⌘-Tab. With the patch:
+
+- while mouse-look is active, the driver takes the mouse's raw deltas from GameController's
+  `GCMouse` (around 1000 per second for a typical mouse) instead of from AppKit's events;
+- an input thread of the driver sends them to the Wine server as they arrive, as on Windows,
+  so the game sees all motion up to the moment it reads input.
+
+`GCMouse` reports device counts, like Windows raw input, so the macOS pointer speed setting
+does not affect mouse-look; the in-game mouse sensitivity does.
+
 Mouse acceleration is off in the prefix (`MouseSpeed=0`): SWG applies Windows acceleration per
 input event, which Wine batches differently. Smooth camera also needs d9mt's display-paced
 presentation (`d3d9.presentInterval = 1` in `src/d9mt.conf`).
@@ -152,7 +166,7 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG nee
   ninja and Xcode; LLVM 15 is built once, or reused via `D9MT_LLVM`).
 - `scripts/build-wintools.sh` builds the small Windows helpers into `prebuilt/wintools`.
 - `scripts/build-winemac.sh` builds Wine's Mac driver from the exact source of the bundled Wine
-  with `patches/winemac-swg.patch` into `prebuilt/winemac`.
+  with `patches/winemac-swg.patch` and `patches/winemac-input.patch` into `prebuilt/winemac`.
 - `build.sh` assembles `dist/SWGL on Mac.app` from pinned, checksummed downloads plus those
   pieces (`--install` also copies it to /Applications). It needs a JDK 9+ (`javac` and
   `jni.h`; Homebrew `openjdk` is found automatically, or set `JAVAC`) and Xcode's Swift.
@@ -178,6 +192,6 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG nee
 ## License
 
 The code in this repository is under the [zlib license](LICENSE), except
-`patches/winemac-swg.patch`, which modifies Wine and is under Wine's LGPL-2.1+. The files in
+the `patches/winemac-*.patch` files, which modify Wine and are under Wine's LGPL-2.1+. The files in
 `prebuilt/` and everything the build downloads keep their own licenses (see above; d9mt's are
 in `prebuilt/d9mt`).

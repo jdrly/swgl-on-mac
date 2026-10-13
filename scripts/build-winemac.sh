@@ -1,8 +1,10 @@
 #!/bin/bash
-# Rebuilds prebuilt/winemac/winemac.so: Wine's Mac driver from the exact athei/wine
-# commit of the bundled Wine, with patches/winemac-*.patch applied (raw mouse while
-# the game hides the cursor, stale SetCursorPos handling; see the patch comments).
-# Only the x86_64 unix library is built; everything else comes from the release.
+# Rebuilds prebuilt/winemac: Wine's Mac driver from the exact athei/wine commit of the
+# bundled Wine, with patches/winemac-swg.patch (raw mouse while the game hides the
+# cursor, stale SetCursorPos handling) and then patches/winemac-input.patch (raw mouse
+# moves sent from an input thread, GameController's GCMouse as their source) applied;
+# see the patch comments. Only the driver is built (the x86_64 unix library and both
+# PE sides); everything else comes from the release.
 #
 #   scripts/build-winemac.sh
 #
@@ -31,7 +33,7 @@ fi
 
 # Fresh, patched copy of the sources.
 rm -rf "$W/src" && cp -R "$W/src-$WINE_COMMIT" "$W/src"
-for p in patches/winemac-*.patch; do
+for p in patches/winemac-swg.patch patches/winemac-input.patch; do
   patch -d "$W/src" -p1 --quiet <"$p"
 done
 
@@ -47,14 +49,19 @@ without="--without-freetype --without-gnutls --without-sdl --without-unwind --wi
 rm -rf "$W/tools" && mkdir "$W/tools"
 ( cd "$W/tools" && ../src/configure $without --without-coreaudio >configure.log && make -j"$(sysctl -n hw.ncpu)" __tooldeps__ >make.log )
 
-# Cross build of the x86_64 Mac driver against those tools.
+# Cross build of the Mac driver against those tools (PE sides with the pinned llvm-mingw,
+# not whatever mingw is on PATH).
 rm -rf "$W/build" && mkdir "$W/build"
 ( cd "$W/build" &&
   ../src/configure --host=x86_64-apple-darwin --with-wine-tools=../tools --enable-archs=i386,x86_64 \
-    --with-mingw --with-coreaudio $without CC="clang -arch x86_64" >configure.log &&
-  make -j"$(sysctl -n hw.ncpu)" dlls/winemac.drv/winemac.so >make.log )
+    --with-mingw="$W/mingw/bin/clang" --with-coreaudio $without CC="clang -arch x86_64" >configure.log &&
+  make -j"$(sysctl -n hw.ncpu)" dlls/winemac.drv/winemac.so \
+    dlls/winemac.drv/i386-windows/winemac.drv dlls/winemac.drv/x86_64-windows/winemac.drv >make.log )
 
-mkdir -p prebuilt/winemac
+mkdir -p prebuilt/winemac/i386-windows prebuilt/winemac/x86_64-windows
 install -m 755 "$W/build/dlls/winemac.drv/winemac.so" prebuilt/winemac/winemac.so
+for a in i386 x86_64; do
+  install -m 644 "$W/build/dlls/winemac.drv/$a-windows/winemac.drv" "prebuilt/winemac/$a-windows/winemac.drv"
+done
 echo "$WINE_TAG" >prebuilt/winemac/wine-tag
-echo "Built prebuilt/winemac/winemac.so for $WINE_TAG"
+echo "Built prebuilt/winemac for $WINE_TAG"

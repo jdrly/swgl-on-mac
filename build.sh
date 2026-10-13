@@ -107,13 +107,18 @@ install -m 644 src/d9mt.conf "$R/d9mt.conf"
 # d9mt's licenses and third-party notices must ship with its binaries.
 mkdir -p "$R/licenses/d9mt"
 cp -R "$D9/LICENSE" "$D9/LICENSES" "$D9/THIRD_PARTY_NOTICES.md" "$R/licenses/d9mt/"
-# Mac driver with raw mouse-look and stale SetCursorPos handling (patches/winemac-swg.patch),
-# built for exactly this Wine by scripts/build-winemac.sh.
-[ "$WINE_TAG" = "$(cat prebuilt/winemac/wine-tag 2>/dev/null)" ] || {
+# Mac driver with raw mouse-look and stale SetCursorPos handling (patches/winemac-swg.patch)
+# and an input thread fed by GCMouse (patches/winemac-input.patch), built for exactly this
+# Wine by scripts/build-winemac.sh.
+[ "$WINE_TAG" = "$(cat prebuilt/winemac/wine-tag 2>/dev/null)" ] &&
+  [ -f prebuilt/winemac/i386-windows/winemac.drv ] || {
   echo "prebuilt/winemac is not built for $WINE_TAG; run scripts/build-winemac.sh" >&2
   exit 1
 }
 install -m 755 prebuilt/winemac/winemac.so "$W/x86_64-unix/winemac.so"
+for a in i386 x86_64; do
+  install -m 644 "prebuilt/winemac/$a-windows/winemac.drv" "$W/$a-windows/winemac.drv"
+done
 # Game Mode (see enable_game_mode in src/common.sh): the Info.plist of the game bundle the
 # wrapper assembles at run time (outside the app, so the app's signature stays intact).
 mkdir -p "$R/gamemode"
