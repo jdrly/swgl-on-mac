@@ -49,7 +49,7 @@ ditto "$SRC" "$APP"
 xattr -cr "$APP"
 
 # Inside out: every Mach-O file first (except the executables of the bundles signed below),
-# then the setup helper bundle, then the app. Executables get the entitlements of their
+# then the helper bundles, then the app. Executables get the entitlements of their
 # runtime; libraries need none.
 echo "[release] signing nested code"
 n=0
@@ -68,7 +68,7 @@ while IFS= read -r -d '' f; do
   n=$((n + 1))
 done < <(find "$APP/Contents" -type f -print0)
 echo "  $n files"
-sign "$APP/Contents/Helpers/SWGL on Mac Setup.app"
+for helper in "$APP/Contents/Helpers/"*.app; do sign "$helper"; done
 sign "$APP"
 codesign --verify --strict --deep "$APP"
 echo "[release] signature verified: $(codesign -dvv "$APP" 2>&1 | grep -E '^Authority=Developer ID Application' | cut -d= -f2)"

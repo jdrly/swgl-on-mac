@@ -2,10 +2,10 @@
 // process that runs the official launcher (it owns the menu bar while its window is
 // in front). Loaded by Launcher.java once JavaFX has created the main menu.
 //
-//   App menu:  About SWGL on Mac (standard About panel), Open SWGL in Finder (the game folder, for mods),
-//              Collect Logs… (a zip for bug reports, Resources/collect-logs.sh)
-//   Features:  Retina Mode, Show Metal HUD, Game Mode, Mouse-Look Speed, Debug Mode
-//              (settings.conf through Resources/settings.sh)
+//   App menu:  About SWGL on Mac (standard About panel), Settings… (the SwiftUI settings
+//              window, Contents/Helpers/SWGL on Mac Settings.app), Open SWGL in Finder (the
+//              game folder, for mods), Collect Logs… (a zip for bug reports,
+//              Resources/collect-logs.sh)
 
 #import <Cocoa/Cocoa.h>
 #include <jni.h>
@@ -13,78 +13,13 @@
 @interface SWGLMenus : NSObject <NSMenuItemValidation>
 @property (copy) NSString *resources;
 @property (copy) NSString *gameFolder;
-@property (copy) NSDictionary<NSString *, NSString *> *settings;
-@property (strong) NSDate *settingsReadAt;
 @property BOOL collectingLogs;
 @end
 
 @implementation SWGLMenus
 
-// settings.sh prints KEY=value lines; with "KEY value" it changes one setting first.
-- (NSDictionary<NSString *, NSString *> *)runSettings:(NSArray<NSString *> *)args
-{
-    NSTask *task = [NSTask new];
-    task.executableURL = [NSURL fileURLWithPath:@"/bin/bash"];
-    task.arguments = [@[[self.resources stringByAppendingPathComponent:@"settings.sh"]]
-                      arrayByAddingObjectsFromArray:args];
-    NSPipe *pipe = [NSPipe pipe];
-    task.standardOutput = pipe;
-    NSError *error = nil;
-    if (![task launchAndReturnError:&error]) {
-        NSLog(@"SWGL on Mac: settings.sh: %@", error);
-        return nil;
-    }
-    NSData *data = [pipe.fileHandleForReading readDataToEndOfFile];
-    [task waitUntilExit];
-    NSMutableDictionary *values = [NSMutableDictionary dictionary];
-    NSString *text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    for (NSString *line in [text componentsSeparatedByString:@"\n"]) {
-        NSRange eq = [line rangeOfString:@"="];
-        if (eq.location != NSNotFound && eq.location > 0)
-            values[[line substringToIndex:eq.location]] = [line substringFromIndex:NSMaxRange(eq)];
-    }
-    return values.count ? values : nil;
-}
-
-- (NSString *)setting:(NSString *)key
-{
-    // Validation asks once per item each time the menu opens.
-    if (!self.settings || -[self.settingsReadAt timeIntervalSinceNow] > 1.0) {
-        NSDictionary *values = [self runSettings:@[]];
-        if (values) self.settings = values;
-        self.settingsReadAt = [NSDate date];
-    }
-    return self.settings[key];
-}
-
-- (BOOL)isOn:(NSString *)key
-{
-    return [[self setting:key] isEqualToString:@"on"];
-}
-
-- (void)toggleSetting:(NSMenuItem *)item
-{
-    NSString *key = item.representedObject;
-    NSDictionary *values = [self runSettings:@[key, [self isOn:key] ? @"off" : @"on"]];
-    if (values) self.settings = values;
-    self.settingsReadAt = [NSDate date];
-    item.state = [self isOn:key] ? NSControlStateValueOn : NSControlStateValueOff;
-}
-
-- (void)setMouseSpeed:(NSMenuItem *)item
-{
-    NSDictionary *values = [self runSettings:@[@"MOUSE_SPEED", item.representedObject]];
-    if (values) self.settings = values;
-    self.settingsReadAt = [NSDate date];
-}
-
 - (BOOL)validateMenuItem:(NSMenuItem *)item
 {
-    if (item.action == @selector(toggleSetting:))
-        item.state = [self isOn:item.representedObject] ? NSControlStateValueOn : NSControlStateValueOff;
-    if (item.action == @selector(setMouseSpeed:))
-        item.state = [[self setting:@"MOUSE_SPEED"] isEqualToString:item.representedObject]
-            ? NSControlStateValueOn : NSControlStateValueOff;
     if (item.action == @selector(collectLogs:))
         return !self.collectingLogs;
     return item.action != nil;
@@ -163,6 +98,20 @@
     [NSApp orderFrontStandardAboutPanelWithOptions:options];
 }
 
+// Its own app, so it gets the current design (this process's Java is linked against an old
+// SDK). Opening it again brings the running one to the front; it quits with the launcher.
+- (void)showSettings:(id)sender
+{
+    NSURL *helper = [NSURL fileURLWithPath:[self.resources stringByAppendingPathComponent:
+                                            @"../Helpers/SWGL on Mac Settings.app"]].URLByStandardizingPath;
+    NSWorkspaceOpenConfiguration *config = [NSWorkspaceOpenConfiguration configuration];
+    config.arguments = @[[NSString stringWithFormat:@"%d", getpid()]];
+    [NSWorkspace.sharedWorkspace openApplicationAtURL:helper configuration:config
+                                    completionHandler:^(NSRunningApplication *app, NSError *error) {
+        if (error) NSLog(@"SWGL on Mac: could not open the settings: %@", error);
+    }];
+}
+
 - (void)openGameFolder:(id)sender
 {
     [NSWorkspace.sharedWorkspace openURL:[NSURL fileURLWithPath:self.gameFolder isDirectory:YES]];
@@ -225,14 +174,6 @@
     });
 }
 
-- (NSMenuItem *)toggleItem:(NSString *)title key:(NSString *)key
-{
-    NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:@selector(toggleSetting:) keyEquivalent:@""];
-    item.target = self;
-    item.representedObject = key;
-    return item;
-}
-
 - (BOOL)install
 {
     NSMenu *mainMenu = NSApp.mainMenu;
@@ -244,47 +185,22 @@
     about.target = self;
     [appMenu insertItem:about atIndex:0];
     [appMenu insertItem:[NSMenuItem separatorItem] atIndex:1];
+    NSMenuItem *settings = [[NSMenuItem alloc] initWithTitle:@"Settings…"
+                                                      action:@selector(showSettings:) keyEquivalent:@","];
+    settings.target = self;
+    [appMenu insertItem:settings atIndex:2];
+    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:3];
     // The game files, where mods go.
     NSMenuItem *gameFolder = [[NSMenuItem alloc] initWithTitle:@"Open SWGL in Finder"
                                                         action:@selector(openGameFolder:) keyEquivalent:@""];
     gameFolder.target = self;
-    [appMenu insertItem:gameFolder atIndex:2];
+    [appMenu insertItem:gameFolder atIndex:4];
     // A zip of the logs to send with a bug report.
     NSMenuItem *collect = [[NSMenuItem alloc] initWithTitle:@"Collect Logs…"
                                                      action:@selector(collectLogs:) keyEquivalent:@""];
     collect.target = self;
-    [appMenu insertItem:collect atIndex:3];
-    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:4];
-
-    NSMenu *features = [[NSMenu alloc] initWithTitle:@"Features"];
-    [features addItem:[self toggleItem:@"Retina Mode" key:@"RETINA"]];
-    [features addItem:[self toggleItem:@"Show Metal HUD" key:@"FPS_HUD"]];
-    [features addItem:[self toggleItem:@"Game Mode" key:@"GAME_MODE"]];
-    // Mouse-look moves are the mouse's own counts, as with Windows raw input, so 1× turns as
-    // fast as on Windows; the macOS pointer speed doesn't apply (MOUSE_SPEED in common.sh).
-    NSMenu *speeds = [[NSMenu alloc] initWithTitle:@"Mouse-Look Speed"];
-    for (NSString *speed in @[@"0.5", @"0.75", @"1", @"1.25", @"1.5", @"1.75", @"2", @"2.5", @"3"]) {
-        NSString *title = [speed isEqualToString:@"1"] ? @"1× (same as Windows)" : [speed stringByAppendingString:@"×"];
-        NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:@selector(setMouseSpeed:) keyEquivalent:@""];
-        item.target = self;
-        item.representedObject = speed;
-        [speeds addItem:item];
-    }
-    NSMenuItem *speedItem = [[NSMenuItem alloc] initWithTitle:@"Mouse-Look Speed" action:nil keyEquivalent:@""];
-    speedItem.submenu = speeds;
-    speedItem.toolTip = @"How fast the camera turns while you steer with the mouse. The in-game mouse sensitivity applies on top.";
-    [features addItem:speedItem];
-    [features addItem:[NSMenuItem separatorItem]];
-    // Much more logging from the game, at some cost in performance (swgl_debug_env in common.sh).
-    NSMenuItem *debug = [self toggleItem:@"Debug Mode" key:@"DEBUG"];
-    debug.toolTip = @"Detailed logs for troubleshooting, at some cost in performance. Turn on when asked to.";
-    [features addItem:debug];
-    [features addItem:[NSMenuItem separatorItem]];
-    [features addItem:[[NSMenuItem alloc] initWithTitle:@"Changes apply the next time the game starts"
-                                                 action:nil keyEquivalent:@""]];
-    NSMenuItem *featuresItem = [[NSMenuItem alloc] initWithTitle:@"Features" action:nil keyEquivalent:@""];
-    featuresItem.submenu = features;
-    [mainMenu addItem:featuresItem];
+    [appMenu insertItem:collect atIndex:5];
+    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:6];
     return YES;
 }
 

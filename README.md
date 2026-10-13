@@ -33,14 +33,14 @@ The app is signed and notarized by Apple.
 
 ## Using it
 
-- **SWGL on Mac menu:** *About SWGL on Mac*, *Open SWGL in Finder*, which opens the game
-  folder (where mods and `custom.cfg` go), and *Collect Logs…* (see
+- **SWGL on Mac menu:** *About SWGL on Mac*, *Settings…* (⌘,), *Open SWGL in Finder*, which
+  opens the game folder (where mods and `custom.cfg` go), and *Collect Logs…* (see
   [Reporting problems](#reporting-problems)).
-- **Features menu:** *Retina Mode* (full-resolution rendering, on by default), *Show Metal HUD*
+- **Settings:** *Retina Mode* (full-resolution rendering, on by default), *Show Metal HUD*
   (frame rate overlay), *Game Mode* (macOS Game Mode in full screen, on by default),
-  *Mouse-Look Speed* (how fast the camera turns; 1× is the same as on Windows), *Debug
-  Mode* (much more detailed game logs, at some cost in performance; off by default). Changes
-  apply the next time the game starts.
+  *Mouse-Look Speed* (how fast the camera turns, 0.1× to 10×; 1× is the same as on Windows),
+  *Debug Mode* (much more detailed game logs, at some cost in performance; off by default).
+  Changes apply the next time the game starts.
 - **Maintenance menu:** hold Option while opening the app for logs, Collect Logs and Debug
   Mode (also when the launcher does not start), the renderer fallback (wined3d), Wine
   configuration and a Wine reset that keeps the game files.
@@ -58,7 +58,7 @@ The app is signed and notarized by Apple.
 
 The zip holds the app's logs, settings, system details (Mac model, macOS, displays) and
 recent crash reports. Your account password, account name, e-mail address, user name and
-serial numbers are left out or replaced. Turn on **Features → Debug Mode** only when asked:
+serial numbers are left out or replaced. Turn on **Settings → Debug Mode** only when asked:
 it makes the logs much more detailed for the next game start, but costs some performance and
 disk space, so turn it off again afterwards.
 
@@ -89,8 +89,10 @@ launcher would run as an anonymous `java` process without the app's menus.
 
 The official launcher runs unchanged. Its Java process owns the menu bar while the launcher is
 in front, so `src/java/Launcher.java` starts it in that JVM and loads
-`src/native/swglmenus.m`, which adds the native menus. The Features toggles write the same
-`settings.conf` as the maintenance menu.
+`src/native/swglmenus.m`, which adds the native menus. *Settings…* opens
+`src/native/Settings.swift`, a SwiftUI window in a helper app of its own: the launcher's Java is
+linked against the macOS 11 SDK, so a window in its process would get the old design. It
+writes the same `settings.conf` as the maintenance menu, through `Resources/settings.sh`.
 
 ### Game Mode
 
@@ -142,7 +144,7 @@ refreshes' worth of motion, so turning juddered and changed with every ⌘-Tab. 
   so the game sees all motion up to the moment it reads input.
 
 `GCMouse` reports device counts, like Windows raw input, so the macOS pointer speed setting
-does not affect mouse-look; *Features → Mouse-Look Speed* (`MOUSE_SPEED`, the driver's
+does not affect mouse-look; *Settings → Mouse-Look Speed* (`MOUSE_SPEED`, the driver's
 `RawMouseGameControllerScale`) and the in-game mouse sensitivity do.
 
 Mouse acceleration is off in the prefix (`MouseSpeed=0`): SWG applies Windows acceleration per

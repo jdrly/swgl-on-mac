@@ -83,6 +83,11 @@ clang -arch arm64 -mmacosx-version-min=26.0 -fobjc-arc -O2 -dynamiclib -Wall \
 H="$APP/Contents/Helpers/SWGL on Mac Setup.app/Contents"
 mkdir -p "$H/MacOS" "$H/Resources"
 swiftc -parse-as-library -O -target arm64-apple-macos26.0 -o "$H/MacOS/SWGLonMacSetup" src/native/Setup.swift
+# Settings window, SwiftUI (SWGL on Mac → Settings…): a helper too, since the launcher's Java
+# is linked against an old SDK and its windows get the old design.
+HS="$APP/Contents/Helpers/SWGL on Mac Settings.app/Contents"
+mkdir -p "$HS/MacOS" "$HS/Resources"
+swiftc -parse-as-library -O -target arm64-apple-macos26.0 -o "$HS/MacOS/SWGLonMacSettings" src/native/Settings.swift
 printf 'version=%s\nauthor=%s\ngithub=%s\nrepo=%s\n' "$APP_VERSION" "$APP_AUTHOR" "$GITHUB_URL" "$REPO_URL" >"$R/app.properties"
 chmod -R u+w "$R/jre" "$R/wine"
 # Drop the Wine SDK (headers, compilers, import libs, conformance tests); the runtime needs none of it.
@@ -162,14 +167,16 @@ unzip -p "$launcher_zip" SWGLegendsLauncher.exe >"$CACHE/launcher/SWGLegendsLaun
 unzip -p "$CACHE/launcher/SWGLegendsLauncher.exe" launcher/images/logo.png >"$CACHE/logo.png" 2>/dev/null || true
 swift src/make-icon.swift "$CACHE/logo.png" "$iconset"
 iconutil -c icns "$iconset" -o "$R/AppIcon.icns"
-cp "$R/AppIcon.icns" "$H/Resources/AppIcon.icns"
-cat >"$H/Info.plist" <<EOF
+# helper_plist <Contents dir> <executable> <bundle ID suffix> [extra plist lines]
+helper_plist() {
+  cp "$R/AppIcon.icns" "$1/Resources/AppIcon.icns"
+  cat >"$1/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleExecutable</key><string>SWGLonMacSetup</string>
-	<key>CFBundleIdentifier</key><string>io.github.jdrly.swglonmac.setup</string>
+	<key>CFBundleExecutable</key><string>$2</string>
+	<key>CFBundleIdentifier</key><string>io.github.jdrly.swglonmac.$3</string>
 	<key>CFBundleName</key><string>SWGL on Mac</string>
 	<key>CFBundleIconFile</key><string>AppIcon</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
@@ -177,14 +184,20 @@ cat >"$H/Info.plist" <<EOF
 	<key>CFBundleShortVersionString</key><string>$APP_VERSION</string>
 	<key>CFBundleVersion</key><string>$APP_VERSION</string>
 	<key>LSMinimumSystemVersion</key><string>26.0</string>
-	<key>NSHighResolutionCapable</key><true/>
+	<key>NSHighResolutionCapable</key><true/>${4:-}
 </dict>
 </plist>
 EOF
-plutil -lint -s "$H/Info.plist"
+  plutil -lint -s "$1/Info.plist"
+}
+helper_plist "$H" SWGLonMacSetup setup
+# An accessory app: no Dock icon, and the launcher's menus stay in the menu bar.
+helper_plist "$HS" SWGLonMacSettings settings $'\n\t<key>LSUIElement</key><true/>'
 
 xattr -cr "$APP"
-codesign --force --sign - "$APP/Contents/Helpers/SWGL on Mac Setup.app" 2>/dev/null || echo "note: ad-hoc signing of the setup helper skipped" >&2
+for helper in "$APP/Contents/Helpers/"*.app; do
+  codesign --force --sign - "$helper" 2>/dev/null || echo "note: ad-hoc signing of $(basename "$helper") skipped" >&2
+done
 codesign --force --sign - "$APP" 2>/dev/null || echo "note: ad-hoc signing skipped" >&2
 echo "Built $APP ($(du -sh "$APP" | cut -f1))"
 

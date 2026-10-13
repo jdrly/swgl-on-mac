@@ -6,7 +6,7 @@
 . "$(dirname "$0")/../common.sh"
 swgl_wine_env
 mkdir -p "$LOGS"
-# Settings changed from the launcher's Features menu since the app started.
+# Settings changed from the Settings window since the app started.
 apply_prefix_settings >>"$LOGS/app.log" 2>&1
 case "$1" in
   *SwgClient_*) ;;

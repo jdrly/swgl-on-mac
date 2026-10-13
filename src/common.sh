@@ -31,11 +31,13 @@ RETINA=on         # on | off  (render at full Retina resolution)
 FPS_HUD=off       # on | off  (Apple's Metal performance HUD over the game)
 GAME_MODE=on      # on | off  (macOS Game Mode while the game is full screen)
 DEBUG=off         # on | off  (Debug Mode: much more logging from the game, see swgl_debug_env)
-MOUSE_SPEED=1     # mouse-look speed: Windows mickeys per mouse count (MOUSE_SPEEDS; 1 = Windows)
+MOUSE_SPEED=1     # mouse-look speed: Windows mickeys per mouse count, 0.1 to 10 (1 = as on Windows)
 [ -f "$SETTINGS" ] && . "$SETTINGS"
 [ "$D3D9" = mtld3d ] && D3D9=d9mt   # settings written by the former mtld3d build
-MOUSE_SPEEDS="0.5 0.75 1 1.25 1.5 1.75 2 2.5 3"
-case " $MOUSE_SPEEDS " in *" $MOUSE_SPEED "*) ;; *) MOUSE_SPEED=1 ;; esac
+swgl_valid_mouse_speed() {
+  [[ $1 =~ ^[0-9]{1,2}(\.[0-9]{1,2})?$ ]] && LC_ALL=C awk -v s="$1" 'BEGIN { exit !(s >= 0.1 && s <= 10) }'
+}
+swgl_valid_mouse_speed "$MOUSE_SPEED" || MOUSE_SPEED=1
 
 swgl_settings() {
   printf 'D3D9=%s\nX87=%s\nRETINA=%s\nFPS_HUD=%s\nGAME_MODE=%s\nDEBUG=%s\nMOUSE_SPEED=%s\n' \
@@ -84,7 +86,7 @@ swgl_wine_env() {
 }
 
 swgl_debug_env() {
-  # Debug Mode (Features menu), for the game client only (the wine shim), so the registry and
+  # Debug Mode (Settings window), for the game client only (the wine shim), so the registry and
   # DPAPI helpers stay quiet. Logging costs some performance and grows wine.log quickly, so it
   # is a bounded set aimed at what goes wrong on a Mac:
   #   Wine: timestamps and process ids to line the log up with d9mt's lines; errors and
@@ -120,7 +122,7 @@ apply_mac_driver_settings() {
   # mouse-look is a constant 1:1.
   wine_cmd reg add 'HKCU\Control Panel\Mouse' /v MouseSpeed /t REG_SZ /d 0 /f >/dev/null
   # Mouse-look moves come from GCMouse as device counts (patches/winemac-input.patch), like
-  # Windows raw input, so 1 turns as fast as on Windows; the Features menu scales it.
+  # Windows raw input, so 1 turns as fast as on Windows; the Settings window scales it.
   wine_cmd reg add "$key" /v RawMouseGameControllerScale /t REG_SZ /d "$MOUSE_SPEED" /f >/dev/null
 }
 
