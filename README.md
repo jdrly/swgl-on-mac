@@ -76,7 +76,7 @@ serial numbers are left out or replaced. Turn on **Settings → Debug Mode** onl
 it makes the logs much more detailed for the next game start, but costs some performance and
 disk space, so turn it off again afterwards.
 
-## Known limitations (0.0.1, early beta)
+## Known limitations (0.0.2, early beta)
 
 - **Short hitches when entering new areas.** The game loads new content on its main thread,
   and on a Mac that code runs translated (Rosetta). Profiling shows the time is the game's own
@@ -191,13 +191,16 @@ presentation (`d3d9.presentInterval = 1` in `src/d9mt.conf`).
 d9mt (D3D9 → Metal) is maintained by Jan Drlý at https://github.com/jdrly/d9mt, a fork of
 neo773's d9mt, which was archived upstream. `scripts/build-d9mt.sh` builds it at a pinned
 commit with that repo's own build recipe and strips the binaries; the app ships d9mt's
-licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG needed:
+licenses and third-party notices in `Resources/licenses/d9mt`. Fixes SWG needed:
 
 - `6a7473c`: varyings are declared with their real type instead of a hardcoded `float4`. The
   scalar D3D9 fog varying of SM1.x/2.0 shaders made Apple's GPU compiler crash (macOS 27), so
   every SWG pixel shader failed and the screen stayed black.
 - `02e7a66`: the occlusion-query buffer uses VirtualAlloc'd memory, which a 32-bit process can
   address.
+- `fd76b39` (jdrly/d9mt#1): SWG's 60 Hz fullscreen request no longer becomes a hard frame limit
+  of exactly one refresh on top of vsync, which made presentation latch at 30 fps after a hitch
+  on 60 Hz displays.
 
 ## Building
 

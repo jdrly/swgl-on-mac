@@ -14,7 +14,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 REPO=https://github.com/jdrly/d9mt.git
-COMMIT=d0629b7b6a46185a113685a6f03b173165719a9a
+COMMIT=fd76b39771878380d2899dedf1cb58569184391b
 V="$ROOT/.cache/d9mt"
 OUT="$ROOT/prebuilt/d9mt"
 export PATH="/opt/homebrew/bin:$PATH"   # the d9mt scripts need bash >= 4.3

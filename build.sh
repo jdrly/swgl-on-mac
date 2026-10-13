@@ -22,7 +22,7 @@ SPARKLE_URL=https://github.com/sparkle-project/Sparkle/releases/download/$SPARKL
 SPARKLE_SHA256=c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
 
 # SWGL_VERSION overrides the version for test builds (e.g. two versions to test updates with).
-APP_VERSION=${SWGL_VERSION:-0.0.1}
+APP_VERSION=${SWGL_VERSION:-0.0.2}
 APP_AUTHOR="Jan Drlý / Pharaphobia"
 GITHUB_URL=https://github.com/jdrly
 REPO_URL=https://github.com/jdrly/swgl-on-mac
