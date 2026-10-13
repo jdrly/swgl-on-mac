@@ -29,24 +29,38 @@ internet connection, and about 10 GB of free space for the game.
    installed yet, macOS offers to install it when the game first starts.
 3. Log in to the launcher. It installs the game and keeps it up to date, as on Windows.
 
-The app is signed and notarized by Apple.
+The app is signed and notarized by Apple. It checks for updates once a day and offers new
+versions with a click (see [Updates](#updates)).
 
 ## Using it
 
-- **SWGL on Mac menu:** *About SWGL on Mac*, *Settings…* (⌘,), *Open SWGL in Finder*, which
-  opens the game folder (where mods and `custom.cfg` go), and *Collect Logs…* (see
-  [Reporting problems](#reporting-problems)).
+- **SWGL on Mac menu:** *About SWGL on Mac*, *Check for Updates…*, *Settings…* (⌘,), *Open
+  SWGL in Finder*, which opens the game folder (where mods and `custom.cfg` go), and *Collect
+  Logs…* (see [Reporting problems](#reporting-problems)).
 - **Settings:** *Retina Mode* (full-resolution rendering, on by default), *Show Metal HUD*
   (frame rate overlay), *Game Mode* (macOS Game Mode in full screen, on by default),
   *Mouse-Look Speed* (how fast the camera turns, 0.25× to 4×; 1× is the same as on Windows),
   *Debug Mode* (much more detailed game logs, at some cost in performance; off by default).
-  Changes apply the next time the game starts.
+  Changes apply the next time the game starts. *Check for updates automatically* (on by
+  default) is the daily update check.
 - **Maintenance menu:** hold Option while opening the app for logs, Collect Logs and Debug
   Mode (also when the launcher does not start), the renderer fallback (wined3d), Wine
   configuration and a Wine reset that keeps the game files.
 - The launcher's saved password is handed to the game, so the login screen is filled in.
 - Game files, the Wine prefix and settings live in `~/Library/Application Support/SWGLonMac`,
   logs in `~/Library/Logs/SWGLonMac`.
+
+## Updates
+
+SWGL on Mac updates itself with [Sparkle](https://sparkle-project.org). It looks for a new
+version once a day (Settings → *Check for updates automatically*) or when you choose
+*Check for Updates…*, shows what changed, and installs it only when you click *Install*: it
+downloads just the changed files where it can, replaces the app and relaunches it. Your game
+files and settings are not touched. While the game is running nothing interrupts it: the daily
+check waits, and an update you start is installed once you quit the game.
+
+Version 0.0.1 has no updater; install the next version once by hand from
+[Releases](https://github.com/jdrly/swgl-on-mac/releases).
 
 ## Reporting problems
 
@@ -93,6 +107,27 @@ in front, so `src/java/Launcher.java` starts it in that JVM and loads
 `src/native/Settings.swift`, a SwiftUI window in a helper app of its own: the launcher's Java is
 linked against the macOS 11 SDK, so a window in its process would get the old design. It
 writes the same `settings.conf` as the maintenance menu, through `Resources/settings.sh`.
+
+### Updates
+
+Sparkle 2 runs inside the launcher's Java process, beside the menus
+(`src/native/swglupdates.m`), with the app bundle as the bundle to update (the process's own
+main bundle is the Java runtime's). It only starts when the process is registered as the app
+(`io.github.jdrly.swglonmac`), since Sparkle quits and relaunches it. Updates are EdDSA-signed;
+the feed is `appcast.xml` of the latest GitHub release, with delta updates from the five
+previous versions. Info.plist turns automatic checks on without Sparkle's permission prompt and
+keeps installing a user decision. The update window is the app's own, in SwiftUI
+(`src/native/UpdateWindow.swift`, driven by the user driver in `swglupdates.m`), and the Settings
+window switches automatic checks (`SUEnableAutomaticChecks` in the app's defaults).
+
+Sparkle cannot see the game, which runs in Wine processes from inside the app (or from the
+Game Mode bundle), so the app checks for those itself: background checks wait until the game
+has quit, an install started while it runs is held until it quits, and quitting the launcher
+with an update ready keeps the process waiting for the game, so the app is never replaced under
+a running game.
+
+For testing, `defaults write io.github.jdrly.swglonmac SWGLUpdateFeedURL <url>` replaces the
+feed; `scripts/test-update.sh` builds two versions and serves a local feed.
 
 ### Game Mode
 
@@ -175,8 +210,12 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG nee
   pieces (`--install` also copies it to /Applications). It needs a JDK 9+ (`javac` and
   `jni.h`; Homebrew `openjdk` is found automatically, or set `JAVAC`) and Xcode's Swift.
 - `scripts/release.sh` signs the app with a Developer ID (hardened runtime, entitlements in
-  `src/entitlements`), builds the DMG, notarizes and staples it (`IDENTITY` and
-  `NOTARY_PROFILE` override the defaults; `--sign-only` stops after signing).
+  `src/entitlements`), builds the DMG, notarizes and staples it, generates the update feed
+  (`appcast.xml` and delta updates, signed with the EdDSA key from Sparkle's `generate_keys`
+  in the login keychain, notes from `release-notes/<version>.md`), checks every delta, and
+  creates a draft GitHub release; publishing it releases the update. `IDENTITY` and
+  `NOTARY_PROFILE` override the defaults; `--sign-only` stops after signing, `--no-notarize`
+  skips notarization and the GitHub release (dry runs).
 
 `prebuilt/` holds the outputs of the three scripts, so `build.sh` works from a fresh clone.
 
@@ -193,6 +232,8 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG nee
 - [Azul Zulu](https://www.azul.com/downloads/) 8 with JavaFX (GPLv2 with Classpath Exception).
   The build changes one thing in it: the SDK version recorded in `bin/java`'s header
   (`vtool -set-build-version`), so macOS gives the launcher's windows the current design.
+- [Sparkle](https://sparkle-project.org) 2 for updates (MIT, with bsdiff and other notices;
+  shipped in `Resources/licenses/sparkle`).
 - [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) for the Windows helpers.
 
 ## License

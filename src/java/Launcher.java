@@ -8,7 +8,8 @@ import javafx.collections.ListChangeListener;
 import javafx.stage.Stage;
 
 // Starts the official launcher (the Main-Class of SWGLegendsLauncher.exe) unchanged,
-// in the same JVM as the app's own macOS menus (native, Resources/java/libswglmenus.dylib).
+// in the same JVM as the app's own macOS menus and app updates (native,
+// Resources/java/libswglmenus.dylib).
 //
 // JavaFX names the app menu items ("Hide …", "Quit …") after the application class,
 // which would read "launcher.Main"; the first name set wins, so claim it before the
@@ -22,6 +23,7 @@ public class Launcher {
   private static final String GAME = System.getProperty("swgl.game", System.getProperty("user.dir"));
 
   private static native boolean installMenus(String resources, String gameFolder);
+  private static native void holdExitForUpdate();
 
   public static void main(String[] args) throws Exception {
     String mainClass;
@@ -33,6 +35,8 @@ public class Launcher {
       try {
         System.load(new File(RES, "java/libswglmenus.dylib").getAbsolutePath());
         installMenusWithNextWindow();
+        // An update that is ready installs when this process ends: not while the game runs.
+        Runtime.getRuntime().addShutdownHook(new Thread(Launcher::holdExitForUpdate, "SWGL update hold"));
       } catch (Throwable t) {
         System.err.println("SWGL on Mac: menus unavailable: " + t);
       }

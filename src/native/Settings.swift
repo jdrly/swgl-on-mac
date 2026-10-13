@@ -61,6 +61,21 @@ final class Settings {
     set { mouseSpeed = (pow(2, newValue) * 20).rounded() / 20 }
   }
 
+  // Sparkle's automatic checks, in the app's defaults (the launcher's Sparkle reads them; on
+  // unless turned off, as in the app's Info.plist).
+  private let appDefaults = UserDefaults(suiteName: "io.github.jdrly.swglonmac")
+  var automaticUpdateChecks: Bool {
+    get {
+      access(keyPath: \.automaticUpdateChecks)
+      return appDefaults?.object(forKey: "SUEnableAutomaticChecks") as? Bool ?? true
+    }
+    set {
+      withMutation(keyPath: \.automaticUpdateChecks) {
+        appDefaults?.set(newValue, forKey: "SUEnableAutomaticChecks")
+      }
+    }
+  }
+
   private func save(_ key: String, _ value: String) {
     values[key] = value
     let script = script
@@ -129,6 +144,14 @@ struct SettingsView: View {
 
       Section("Mouse") {
         MouseSpeedRow(settings: settings)
+      }
+
+      Section("Updates") {
+        Toggle(isOn: $settings.automaticUpdateChecks) {
+          Text("Check for updates automatically")
+          Text("Looks for a new version of SWGL on Mac once a day, never while the game is "
+               + "running. Updates install only when you choose to.")
+        }
       }
 
       Section("Troubleshooting") {

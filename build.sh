@@ -17,8 +17,12 @@ JRE_SHA256=97d384e8ed02b5042c51fd19c94e2b8c33070ab913a24d1f7ab8e376e816fc16
 WINE_TAG=cx-26.3.0-8
 WINE_URL=https://github.com/athei/wine-build/releases/download/$WINE_TAG/wine-$WINE_TAG-macos-x86_64.tar.xz
 WINE_SHA256=1976c3310a1f8be2f8e9a46fcb524f77b4316df3d281d94af2c8542bef60456d
+SPARKLE_VERSION=2.10.0
+SPARKLE_URL=https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz
+SPARKLE_SHA256=c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
 
-APP_VERSION=0.0.1
+# SWGL_VERSION overrides the version for test builds (e.g. two versions to test updates with).
+APP_VERSION=${SWGL_VERSION:-0.0.1}
 APP_AUTHOR="Jan Drlý / Pharaphobia"
 GITHUB_URL=https://github.com/jdrly
 REPO_URL=https://github.com/jdrly/swgl-on-mac
@@ -40,6 +44,15 @@ fetch() { # url sha256 -> prints path of the verified download
 
 jre_tgz=$(fetch "$JRE_URL" "$JRE_SHA256")
 wine_txz=$(fetch "$WINE_URL" "$WINE_SHA256")
+# Sparkle (app updates): the framework goes into the app, its tools (generate_appcast,
+# BinaryDelta, generate_keys) are used from here by scripts/release.sh.
+SPARKLE="$CACHE/sparkle-$SPARKLE_VERSION"
+if [ ! -d "$SPARKLE/Sparkle.framework" ]; then
+  sparkle_txz=$(fetch "$SPARKLE_URL" "$SPARKLE_SHA256")
+  rm -rf "$SPARKLE.part" && mkdir -p "$SPARKLE.part"
+  tar -xJf "$sparkle_txz" -C "$SPARKLE.part"
+  rm -rf "$SPARKLE" && mv "$SPARKLE.part" "$SPARKLE"
+fi
 
 echo "Assembling $APP"
 rm -rf "$APP"
@@ -61,7 +74,7 @@ install -m 755 src/collect-logs.sh "$R/collect-logs.sh"
 mkdir -p "$R/tools"
 install -m 644 prebuilt/wintools/swgl-dpapi.exe "$R/tools/swgl-dpapi.exe"
 # src/java starts the official launcher unchanged (app menu name "Launcher") and loads
-# src/native, the app's macOS menus (About, Features). Needs a JDK for javac and jni.h.
+# src/native, the app's macOS menus, updates and update window. Needs a JDK for javac and jni.h.
 JAVAC=${JAVAC:-}
 for c in /opt/homebrew/opt/openjdk/bin/javac "$(/usr/libexec/java_home 2>/dev/null)/bin/javac"; do
   [ -z "$JAVAC" ] && [ -x "$c" ] && JAVAC=$c
@@ -83,9 +96,28 @@ tar -xJf "$wine_txz" -C "$R"
 mkdir -p "$R/java"
 "$JAVAC" --release 8 -Xlint:-options -encoding UTF-8 -cp "$R/jre/Contents/Home/lib/ext/jfxrt.jar" \
   -d "$R/java" src/java/*.java
-clang -arch arm64 -mmacosx-version-min=26.0 -fobjc-arc -O2 -dynamiclib -Wall \
-  -I"$JDK_INCLUDE" -I"$JDK_INCLUDE/darwin" -framework Cocoa \
-  -o "$R/java/libswglmenus.dylib" src/native/swglmenus.m
+# Sparkle is weakly linked: without the framework the menus still work, just without updates.
+# The update window is SwiftUI (UpdateWindow.swift): compiled first, for the Objective-C
+# header the updater imports, then linked with the rest by swiftc (Swift runtime from the OS).
+NB="$CACHE/native-build"
+rm -rf "$NB" && mkdir -p "$NB"
+swiftc -parse-as-library -O -target arm64-apple-macos26.0 -module-name SWGLMenus -c \
+  -o "$NB/UpdateWindow.o" -emit-objc-header-path "$NB/SWGLMenus-Swift.h" src/native/UpdateWindow.swift
+for m in swglmenus swglupdates; do
+  clang -arch arm64 -mmacosx-version-min=26.0 -fobjc-arc -fmodules -O2 -Wall -c \
+    -I"$JDK_INCLUDE" -I"$JDK_INCLUDE/darwin" -I"$NB" -F "$SPARKLE" -o "$NB/$m.o" "src/native/$m.m"
+done
+swiftc -emit-library -target arm64-apple-macos26.0 -o "$R/java/libswglmenus.dylib" "$NB"/*.o \
+  -framework Cocoa -F "$SPARKLE" -Xlinker -weak_framework -Xlinker Sparkle \
+  -Xlinker -rpath -Xlinker @loader_path/../../Frameworks
+# Sparkle for app updates (src/native/swglupdates.m). Its XPC services are only for sandboxed
+# apps; Sparkle's license ships with it.
+mkdir -p "$APP/Contents/Frameworks"
+ditto "$SPARKLE/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+rm -rf "$APP/Contents/Frameworks/Sparkle.framework/XPCServices" \
+  "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices"
+mkdir -p "$R/licenses/sparkle"
+cp "$SPARKLE/LICENSE" "$R/licenses/sparkle/LICENSE"
 # First-run welcome window, SwiftUI (downloads the official launcher; see ensure_launcher in
 # src/main.sh). Its own helper bundle, so it does not take over the app's identity.
 H="$APP/Contents/Helpers/SWGL on Mac Setup.app/Contents"
@@ -162,8 +194,8 @@ find "$R/wine/lib/wine" -name '*.a' -delete
 rm -rf "$R/wine/lib/external/D3DMetal.framework" "$R/wine/lib/wine/dxgi/gptk"
 
 
-printf 'wine %s\njre %s\nd9mt %s\napp %s\n' "$WINE_TAG" "$(basename "$JRE_URL" .tar.gz)" \
-  "$(tr '\n' ' ' <"$D9/VERSION")" "$APP_VERSION" >"$R/VERSIONS"
+printf 'wine %s\njre %s\nd9mt %s\nsparkle %s\napp %s\n' "$WINE_TAG" "$(basename "$JRE_URL" .tar.gz)" \
+  "$(tr '\n' ' ' <"$D9/VERSION")" "$SPARKLE_VERSION" "$APP_VERSION" >"$R/VERSIONS"
 
 iconset="$CACHE/AppIcon.iconset"
 rm -rf "$iconset"
@@ -203,6 +235,12 @@ helper_plist "$H" SWGLonMacSetup setup
 helper_plist "$HS" SWGLonMacSettings settings $'\n\t<key>LSUIElement</key><true/>'
 
 xattr -cr "$APP"
+# Sparkle without its XPC services no longer matches its own signature (release.sh signs it
+# for real, in the same order).
+fw="$APP/Contents/Frameworks/Sparkle.framework"
+for f in "$fw/Versions/B/Autoupdate" "$fw/Versions/B/Updater.app" "$fw"; do
+  codesign --force --sign - "$f" 2>/dev/null || echo "note: ad-hoc signing of $f skipped" >&2
+done
 for helper in "$APP/Contents/Helpers/"*.app; do
   codesign --force --sign - "$helper" 2>/dev/null || echo "note: ad-hoc signing of $(basename "$helper") skipped" >&2
 done

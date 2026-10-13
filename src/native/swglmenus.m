@@ -2,18 +2,20 @@
 // process that runs the official launcher (it owns the menu bar while its window is
 // in front). Loaded by Launcher.java once JavaFX has created the main menu.
 //
-//   App menu:  About SWGL on Mac (standard About panel), Settings… (the SwiftUI settings
-//              window, Contents/Helpers/SWGL on Mac Settings.app), Open SWGL in Finder (the
-//              game folder, for mods), Collect Logs… (a zip for bug reports,
-//              Resources/collect-logs.sh)
+//   App menu:  About SWGL on Mac (standard About panel), Check for Updates… (Sparkle,
+//              src/native/swglupdates.m), Settings… (the SwiftUI settings window,
+//              Contents/Helpers/SWGL on Mac Settings.app), Open SWGL in Finder (the game
+//              folder, for mods), Collect Logs… (a zip for bug reports, Resources/collect-logs.sh)
 
 #import <Cocoa/Cocoa.h>
 #include <jni.h>
+#import "swglupdates.h"
 
 @interface SWGLMenus : NSObject <NSMenuItemValidation>
 @property (copy) NSString *resources;
 @property (copy) NSString *gameFolder;
 @property BOOL collectingLogs;
+@property (strong) SWGLUpdates *updates;  // nil without app updates
 @end
 
 @implementation SWGLMenus
@@ -180,27 +182,31 @@
     NSMenu *appMenu = mainMenu.numberOfItems ? [mainMenu itemAtIndex:0].submenu : nil;
     if (!appMenu) return NO;
 
+    NSInteger index = 0;
     NSMenuItem *about = [[NSMenuItem alloc] initWithTitle:@"About SWGL on Mac"
                                                    action:@selector(showAbout:) keyEquivalent:@""];
     about.target = self;
-    [appMenu insertItem:about atIndex:0];
-    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:1];
+    [appMenu insertItem:about atIndex:index++];
+    self.updates = [SWGLUpdates startWithResources:self.resources gameFolder:self.gameFolder];
+    if (self.updates)
+        [appMenu insertItem:[self.updates checkForUpdatesItem] atIndex:index++];
+    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:index++];
     NSMenuItem *settings = [[NSMenuItem alloc] initWithTitle:@"Settings…"
                                                       action:@selector(showSettings:) keyEquivalent:@","];
     settings.target = self;
-    [appMenu insertItem:settings atIndex:2];
-    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:3];
+    [appMenu insertItem:settings atIndex:index++];
+    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:index++];
     // The game files, where mods go.
     NSMenuItem *gameFolder = [[NSMenuItem alloc] initWithTitle:@"Open SWGL in Finder"
                                                         action:@selector(openGameFolder:) keyEquivalent:@""];
     gameFolder.target = self;
-    [appMenu insertItem:gameFolder atIndex:4];
+    [appMenu insertItem:gameFolder atIndex:index++];
     // A zip of the logs to send with a bug report.
     NSMenuItem *collect = [[NSMenuItem alloc] initWithTitle:@"Collect Logs…"
                                                      action:@selector(collectLogs:) keyEquivalent:@""];
     collect.target = self;
-    [appMenu insertItem:collect atIndex:5];
-    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:6];
+    [appMenu insertItem:collect atIndex:index++];
+    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:index++];
     return YES;
 }
 
@@ -228,4 +234,10 @@ JNIEXPORT jboolean JNICALL Java_Launcher_installMenus(JNIEnv *env, jclass cls, j
     if (![m install]) return JNI_FALSE;
     menus = m;
     return JNI_TRUE;
+}
+
+// Launcher.holdExitForUpdate(), from the JVM's shutdown hook: see SWGLUpdatesHoldExit.
+JNIEXPORT void JNICALL Java_Launcher_holdExitForUpdate(JNIEnv *env, jclass cls)
+{
+    SWGLUpdatesHoldExit();
 }
