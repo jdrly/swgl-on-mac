@@ -56,6 +56,7 @@ install -m 644 src/common.sh "$R/common.sh"
 install -m 755 src/wine-shim.sh "$R/bin/wine"
 install -m 755 src/relaunch-shim.sh "$R/bin/SWGLegendsLauncher.exe"
 install -m 755 src/settings.sh "$R/settings.sh"
+install -m 755 src/collect-logs.sh "$R/collect-logs.sh"
 [ -f prebuilt/wintools/swgl-dpapi.exe ] || { echo "Missing prebuilt/wintools; run scripts/build-wintools.sh" >&2; exit 1; }
 mkdir -p "$R/tools"
 install -m 644 prebuilt/wintools/swgl-dpapi.exe "$R/tools/swgl-dpapi.exe"

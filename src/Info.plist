@@ -30,6 +30,8 @@
 	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Collect Logs saves its zip file to your Desktop.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

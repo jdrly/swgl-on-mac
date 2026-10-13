@@ -26,16 +26,31 @@ The app is signed and notarized by Apple.
 
 ## Using it
 
-- **SWGL on Mac menu:** *About SWGL on Mac*, and *Open SWGL in Finder*, which opens the game
-  folder (where mods and `custom.cfg` go).
+- **SWGL on Mac menu:** *About SWGL on Mac*, *Open SWGL in Finder*, which opens the game
+  folder (where mods and `custom.cfg` go), and *Collect Logs…* (see
+  [Reporting problems](#reporting-problems)).
 - **Features menu:** *Retina Mode* (full-resolution rendering, on by default), *Show Metal HUD*
-  (frame rate overlay), *Game Mode* (macOS Game Mode in full screen, on by default). Changes
+  (frame rate overlay), *Game Mode* (macOS Game Mode in full screen, on by default), *Debug
+  Mode* (much more detailed game logs, at some cost in performance; off by default). Changes
   apply the next time the game starts.
-- **Maintenance menu:** hold Option while opening the app for logs, the renderer fallback
-  (wined3d), Wine configuration and a Wine reset that keeps the game files.
+- **Maintenance menu:** hold Option while opening the app for logs, Collect Logs and Debug
+  Mode (also when the launcher does not start), the renderer fallback (wined3d), Wine
+  configuration and a Wine reset that keeps the game files.
 - The launcher's saved password is handed to the game, so the login screen is filled in.
 - Game files, the Wine prefix and settings live in `~/Library/Application Support/SWGLonMac`,
   logs in `~/Library/Logs/SWGLonMac`.
+
+## Reporting problems
+
+1. Choose **SWGL on Mac → Collect Logs…** (in the launcher's menu bar). It saves
+   `SWGL-on-Mac-logs-<date>.zip` to your Desktop and shows it in Finder.
+2. Send that zip with a short description of what happened and when.
+
+The zip holds the app's logs, settings, system details (Mac model, macOS, displays) and
+recent crash reports. Your account password, account name, e-mail address, user name and
+serial numbers are left out or replaced. Turn on **Features → Debug Mode** only when asked:
+it makes the logs much more detailed for the next game start, but costs some performance and
+disk space, so turn it off again afterwards.
 
 ## Known limitations (0.0.1, early beta)
 

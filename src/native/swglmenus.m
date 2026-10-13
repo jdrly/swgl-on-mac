@@ -2,8 +2,10 @@
 // process that runs the official launcher (it owns the menu bar while its window is
 // in front). Loaded by Launcher.java once JavaFX has created the main menu.
 //
-//   App menu:  About SWGL on Mac (standard About panel), Open SWGL in Finder (the game folder, for mods)
-//   Features:  Retina Mode, Show Metal HUD, Game Mode (settings.conf through Resources/settings.sh)
+//   App menu:  About SWGL on Mac (standard About panel), Open SWGL in Finder (the game folder, for mods),
+//              Collect Logs… (a zip for bug reports, Resources/collect-logs.sh)
+//   Features:  Retina Mode, Show Metal HUD, Game Mode, Debug Mode (settings.conf through
+//              Resources/settings.sh)
 
 #import <Cocoa/Cocoa.h>
 #include <jni.h>
@@ -13,6 +15,7 @@
 @property (copy) NSString *gameFolder;
 @property (copy) NSDictionary<NSString *, NSString *> *settings;
 @property (strong) NSDate *settingsReadAt;
+@property BOOL collectingLogs;
 @end
 
 @implementation SWGLMenus
@@ -67,6 +70,8 @@
 {
     if (item.action == @selector(toggleSetting:))
         item.state = [self isOn:item.representedObject] ? NSControlStateValueOn : NSControlStateValueOff;
+    if (item.action == @selector(collectLogs:))
+        return !self.collectingLogs;
     return item.action != nil;
 }
 
@@ -145,6 +150,62 @@
     [NSWorkspace.sharedWorkspace openURL:[NSURL fileURLWithPath:self.gameFolder isDirectory:YES]];
 }
 
+// Resources/collect-logs.sh zips the logs for a bug report (a few seconds: off the main
+// thread) and prints the zip's path; then say where it is and show it in Finder.
+- (void)collectLogs:(id)sender
+{
+    self.collectingLogs = YES;
+    NSString *script = [self.resources stringByAppendingPathComponent:@"collect-logs.sh"];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSTask *task = [NSTask new];
+        task.executableURL = [NSURL fileURLWithPath:@"/bin/bash"];
+        task.arguments = @[script];
+        task.standardInput = [NSFileHandle fileHandleWithNullDevice];
+        NSPipe *output = [NSPipe pipe], *errors = [NSPipe pipe];
+        task.standardOutput = output;
+        task.standardError = errors;
+        NSError *error = nil;
+        NSString *zip = nil, *problem = nil;
+        if ([task launchAndReturnError:&error]) {
+            NSData *data = [output.fileHandleForReading readDataToEndOfFile];
+            NSData *errorData = [errors.fileHandleForReading readDataToEndOfFile];
+            [task waitUntilExit];
+            NSCharacterSet *space = NSCharacterSet.whitespaceAndNewlineCharacterSet;
+            NSString *path = [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]
+                              stringByTrimmingCharactersInSet:space];
+            path = [path componentsSeparatedByString:@"\n"].lastObject;
+            if (task.terminationStatus == 0 && path.length && [NSFileManager.defaultManager fileExistsAtPath:path])
+                zip = path;
+            else
+                problem = [[[NSString alloc] initWithData:errorData encoding:NSUTF8StringEncoding]
+                           stringByTrimmingCharactersInSet:space];
+        } else {
+            problem = error.localizedDescription;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.collectingLogs = NO;
+            NSAlert *alert = [NSAlert new];
+            if (zip) {
+                NSString *folder = [NSFileManager.defaultManager displayNameAtPath:zip.stringByDeletingLastPathComponent];
+                alert.messageText = @"Logs collected";
+                alert.informativeText = [NSString stringWithFormat:
+                    @"%@ is in your %@ folder. Send it along with a short description of the problem.",
+                    zip.lastPathComponent, folder];
+                [alert addButtonWithTitle:@"Show in Finder"];
+            } else {
+                alert.alertStyle = NSAlertStyleWarning;
+                alert.messageText = @"Could not collect the logs";
+                alert.informativeText = [NSString stringWithFormat:@"%@\n\nThe logs are in ~/Library/Logs/SWGLonMac.",
+                                         problem.length ? problem : @"collect-logs.sh failed."];
+            }
+            [NSApp activateIgnoringOtherApps:YES];
+            [alert runModal];
+            if (zip)
+                [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:@[[NSURL fileURLWithPath:zip]]];
+        });
+    });
+}
+
 - (NSMenuItem *)toggleItem:(NSString *)title key:(NSString *)key
 {
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:@selector(toggleSetting:) keyEquivalent:@""];
@@ -169,12 +230,22 @@
                                                         action:@selector(openGameFolder:) keyEquivalent:@""];
     gameFolder.target = self;
     [appMenu insertItem:gameFolder atIndex:2];
-    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:3];
+    // A zip of the logs to send with a bug report.
+    NSMenuItem *collect = [[NSMenuItem alloc] initWithTitle:@"Collect Logs…"
+                                                     action:@selector(collectLogs:) keyEquivalent:@""];
+    collect.target = self;
+    [appMenu insertItem:collect atIndex:3];
+    [appMenu insertItem:[NSMenuItem separatorItem] atIndex:4];
 
     NSMenu *features = [[NSMenu alloc] initWithTitle:@"Features"];
     [features addItem:[self toggleItem:@"Retina Mode" key:@"RETINA"]];
     [features addItem:[self toggleItem:@"Show Metal HUD" key:@"FPS_HUD"]];
     [features addItem:[self toggleItem:@"Game Mode" key:@"GAME_MODE"]];
+    [features addItem:[NSMenuItem separatorItem]];
+    // Much more logging from the game, at some cost in performance (swgl_debug_env in common.sh).
+    NSMenuItem *debug = [self toggleItem:@"Debug Mode" key:@"DEBUG"];
+    debug.toolTip = @"Detailed logs for troubleshooting, at some cost in performance. Turn on when asked to.";
+    [features addItem:debug];
     [features addItem:[NSMenuItem separatorItem]];
     [features addItem:[[NSMenuItem alloc] initWithTitle:@"Changes apply the next time the game starts"
                                                  action:nil keyEquivalent:@""]];

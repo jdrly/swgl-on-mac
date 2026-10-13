@@ -6,10 +6,10 @@
 . "$(dirname "$0")/common.sh"
 if [ $# -eq 2 ]; then
   case "$1=$2" in
-    X87=on|X87=off|RETINA=on|RETINA=off|FPS_HUD=on|FPS_HUD=off|GAME_MODE=on|GAME_MODE=off) printf -v "$1" %s "$2" ;;
+    X87=on|X87=off|RETINA=on|RETINA=off|FPS_HUD=on|FPS_HUD=off|GAME_MODE=on|GAME_MODE=off|DEBUG=on|DEBUG=off) printf -v "$1" %s "$2" ;;
     D3D9=d9mt|D3D9=wined3d) D3D9=$2 ;;
     *) echo "unsupported setting: $1=$2" >&2; exit 2 ;;
   esac
   swgl_save_settings
 fi
-printf 'D3D9=%s\nX87=%s\nRETINA=%s\nFPS_HUD=%s\nGAME_MODE=%s\n' "$D3D9" "$X87" "$RETINA" "$FPS_HUD" "$GAME_MODE"
+swgl_settings

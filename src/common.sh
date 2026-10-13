@@ -30,12 +30,18 @@ X87=on            # on | off  (x87sidecar Rosetta acceleration)
 RETINA=on         # on | off  (render at full Retina resolution)
 FPS_HUD=off       # on | off  (Apple's Metal performance HUD over the game)
 GAME_MODE=on      # on | off  (macOS Game Mode while the game is full screen)
+DEBUG=off         # on | off  (Debug Mode: much more logging from the game, see swgl_debug_env)
 [ -f "$SETTINGS" ] && . "$SETTINGS"
 [ "$D3D9" = mtld3d ] && D3D9=d9mt   # settings written by the former mtld3d build
 
+swgl_settings() {
+  printf 'D3D9=%s\nX87=%s\nRETINA=%s\nFPS_HUD=%s\nGAME_MODE=%s\nDEBUG=%s\n' \
+    "$D3D9" "$X87" "$RETINA" "$FPS_HUD" "$GAME_MODE" "$DEBUG"
+}
+
 swgl_save_settings() {
   mkdir -p "$SUPPORT"
-  printf 'D3D9=%s\nX87=%s\nRETINA=%s\nFPS_HUD=%s\nGAME_MODE=%s\n' "$D3D9" "$X87" "$RETINA" "$FPS_HUD" "$GAME_MODE" >"$SETTINGS"
+  swgl_settings >"$SETTINGS"
 }
 
 swgl_wine_env() {
@@ -48,6 +54,7 @@ swgl_wine_env() {
   if [ -s "$SUPPORT/debug.env" ]; then
     set -a; . "$SUPPORT/debug.env"; set +a
   fi
+  SWGL_WINEDEBUG_GIVEN=${WINEDEBUG:+1}  # Debug Mode leaves channels given here alone
   export WINEDEBUG="${WINEDEBUG:--all}"
   if [ "$FPS_HUD" = on ]; then
     export MTL_HUD_ENABLED=1
@@ -71,6 +78,26 @@ swgl_wine_env() {
   else
     unset ROSETTA_X87_PATH
   fi
+}
+
+swgl_debug_env() {
+  # Debug Mode (Features menu), for the game client only (the wine shim), so the registry and
+  # DPAPI helpers stay quiet. Logging costs some performance and grows wine.log quickly, so it
+  # is a bounded set aimed at what goes wrong on a Mac:
+  #   Wine: timestamps and process ids to line the log up with d9mt's lines; errors and
+  #   fixmes (Wine's own default); warn+seh, the exceptions Wine reports (a crash still gets
+  #   Wine's backtrace); +loaddll, every DLL with native/builtin (which d3d9, mods); thread
+  #   names. Left out: trace-level +seh (WoW64 unwinds every window callback, ~110 a second,
+  #   each with a register dump: 99% of the log), and +dinput and +cursor, the mouse
+  #   problems' channels, which log every mouse move; put them in $SUPPORT/winedebug instead.
+  #   d9mt: its profiler (a PROF line every 256 frames, a HITCH line for every frame over
+  #   50 ms, saying whether the time went to d9mt or the game) and memory statistics (a DIAG
+  #   MEM line every 256 frames: the 32-bit game runs out of address space before RAM).
+  # Channels from $SUPPORT/winedebug, debug.env or the environment win.
+  [ "$DEBUG" = on ] || return 0
+  [ -n "${SWGL_WINEDEBUG_GIVEN:-}" ] ||
+    export WINEDEBUG=+timestamp,+pid,err+all,fixme+all,warn+seh,+loaddll,+threadname
+  export D9MT_PROFILE="${D9MT_PROFILE:-1}" D9MT_HITCH_MS="${D9MT_HITCH_MS:-50}" D9MT_MEMSTATS="${D9MT_MEMSTATS:-1}"
 }
 
 wine_cmd() {
@@ -168,7 +195,7 @@ fix_game_password() {
   awk -v v="$enc" '{ cr = sub(/\r$/, "") }
     /^[ \t]*loginClientEncHashedPassword=/ { sub(/=.*/, "=" v) }
     { printf "%s%s\n", $0, (cr ? "\r" : "") }' "$cfg" >"$cfg.swgl-tmp" && mv "$cfg.swgl-tmp" "$cfg"
-  echo "Saved the game password for $id in legends.cfg (DPAPI)"
+  echo "Saved the game password in legends.cfg (DPAPI)"
 }
 
 enable_game_mode() {
@@ -202,6 +229,91 @@ enable_game_mode() {
   m="$(stat -f %Fm "$lib/wine")" || return 0
   dir="$(getconf DARWIN_USER_TEMP_DIR)winetemp-$(stat -f '%i-%z' "$lib/wine")-${m%.*}-$((10#${m#*.}))"
   mkdir -p -m 700 "$dir" && ln -sfn "$gm/MacOS/$exe" "$dir/wine"
+}
+
+# Diagnostics for app.log and Collect Logs (Resources/collect-logs.sh). All cheap, and none of
+# it runs while the game plays.
+DISPLAYS_CACHE="$CACHES/displays.txt"  # swgl_displays at app start, for the game start blocks
+
+swgl_versions() {  # "wine cx-26.3.0-8 jre … d9mt d0629b7 app 0.0.1"
+  tr -s '\n ' '  ' <"$RES/VERSIONS" | sed 's/ $//'
+}
+
+swgl_system_info() {  # the Mac, power and settings, one line each (sysctl and pmset are fast)
+  local mode
+  echo "Mac: $(sysctl -n hw.model), $(sysctl -n machdep.cpu.brand_string)" \
+    "($(sysctl -n hw.perflevel0.physicalcpu 2>/dev/null)+$(sysctl -n hw.perflevel1.physicalcpu 2>/dev/null) cores)," \
+    "$(($(sysctl -n hw.memsize) / 1073741824)) GB, macOS $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
+  mode="$(pmset -g 2>/dev/null | awk '
+    $1 == "lowpowermode" && $2 == 1 { print "Low Power Mode" }
+    $1 == "powermode" { print ($2 == 1 ? "Low Power Mode" : $2 == 2 ? "High Power Mode" : "power mode automatic") }' | head -1)"
+  echo "Power: $(pmset -g ps 2>/dev/null | sed -n "1s/.*'\(.*\)'.*/\1/p")${mode:+, $mode};" \
+    "Rosetta $([ -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ] && echo installed || echo "not installed")"
+  echo "Settings: $(swgl_settings | tr '\n' ' ')"
+}
+
+swgl_displays() {  # one "Display:" line per screen; system_profiler takes a moment
+  system_profiler SPDisplaysDataType 2>/dev/null | awk '
+    function out() {
+      if (name != "") {
+        s = "Display: " name (type != "" ? " (" type ")" : "") ", " res
+        if (ui != "") {
+          split(res, r, " "); split(ui, u, " ")
+          s = s ", looks like " ui (u[1] > 0 ? sprintf(" (scale %g)", r[1] / u[1]) : "")
+        }
+        print s (main ? ", main" : "") (mirror ? ", mirrored" : "")
+      }
+      name = type = res = ui = ""; main = mirror = 0
+    }
+    /^ *$/ { next }
+    { i = match($0, /[^ ]/); line = substr($0, i) }
+    line == "Displays:" { out(); d = i; next }
+    d && i <= d { out(); d = 0 }
+    d && line ~ /:$/ { out(); name = substr(line, 1, length(line) - 1); next }
+    d && sub(/^Display Type: /, "", line) { type = line }
+    d && sub(/^Resolution: /, "", line) { sub(/ \(.*\)$/, "", line); res = line }
+    d && sub(/^UI Looks like: /, "", line) { ui = line }
+    d && line == "Main Display: Yes" { main = 1 }
+    d && line == "Mirror: On" { mirror = 1 }
+    END { out() }'
+}
+
+# Crash reports macOS wrote for this app's processes, newest first (find tests narrow them
+# down, e.g. -newer FILE or -mtime -7): the game, and Wine, Java and Metal's shader compiler
+# when they ran for SWGL on Mac (other apps' reports stay out).
+swgl_crash_reports() {
+  local f
+  find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f \( -name 'SwgClient*' -o -name '*wine*' \
+    -o -name '*java*' -o -name 'SWGLonMac*' -o -name 'MTLCompilerService*' \) "$@" -print0 2>/dev/null |
+    xargs -0 ls -t 2>/dev/null | while IFS= read -r f; do
+      case "${f##*/}" in
+        SwgClient*) ;;
+        MTLCompilerService*) LC_ALL=C grep -q -E '"responsibleProc" : "(SwgClient|wine)' "$f" || continue ;;
+        *) LC_ALL=C grep -q -i -E 'swglonmac|SWGL on Mac' "$f" || continue ;;
+      esac
+      echo "$f"
+    done
+}
+
+game_exit_note() {
+  # After the game: how long it ran, its exit status, and any crash report macOS or the game
+  # (a minidump) wrote since it started. macOS writes its report shortly after the process is
+  # gone, so after an abnormal exit look again for a few seconds.
+  local exe=$1 status=$2 since=$3 secs=$4 how reports i
+  how="status $status"
+  [ "$status" -gt 128 ] && how+=" (signal $(kill -l $((status - 128)) 2>/dev/null), unless the game's own exit code)"
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    reports="$(swgl_crash_reports -newer "$since"; find "$GAME" -maxdepth 1 -name '*.mdmp' -newer "$since" 2>/dev/null)"
+    [ -n "$reports" ] || [ "$status" = 0 ] || [ "$i" = 10 ] || { sleep 1; continue; }
+    break
+  done
+  echo "=== $(date '+%F %T') game exit: $exe, $how after $((secs / 3600))h$(printf '%02dm%02ds' $((secs / 60 % 60)) $((secs % 60)))"
+  if [ -n "$reports" ]; then
+    printf '%s\n' "$reports" | sed 's|.*/||' |
+      awk 'NR <= 5 { print "Crash report: " $0 } END { if (NR > 5) print "Crash report: and " NR - 5 " more" }'
+  else
+    echo "No new crash report"
+  fi
 }
 
 swgl_notify() {

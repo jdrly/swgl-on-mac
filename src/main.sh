@@ -14,6 +14,11 @@ for log in app launcher wine; do
 done
 exec >>"$LOGS/app.log" 2>&1
 echo "=== $(date '+%F %T') ${1:-starting} ($(cat "$RES/VERSIONS" | tr '\n' ' '))"
+swgl_system_info
+# The displays take system_profiler a moment: list them in the background, and keep the
+# list for the game start blocks (Resources/bin/wine).
+mkdir -p "$CACHES"
+( swgl_displays >"$DISPLAYS_CACHE.tmp" && mv -f "$DISPLAYS_CACHE.tmp" "$DISPLAYS_CACHE" && cat "$DISPLAYS_CACHE" ) </dev/null &
 
 option_held() {
   [ "$(osascript -l JavaScript -e 'ObjC.import("AppKit"); ($.NSEvent.modifierFlags & 0x80000) ? "1" : "0"' 2>/dev/null)" = 1 ]
@@ -58,20 +63,23 @@ EOF
 
 maintenance_menu() {
   while :; do
-    local other_d3d9=wined3d other_x87=off other_retina=on other_hud=on
+    local other_d3d9=wined3d other_x87=off other_retina=on other_hud=on other_debug=on
     [ "$D3D9" = wined3d ] && other_d3d9=d9mt
     [ "$X87" = off ] && other_x87=on
     [ "$RETINA" = on ] && other_retina=off
     [ "$FPS_HUD" = on ] && other_hud=off
-    local c
+    [ "$DEBUG" = on ] && other_debug=off
+    local c zip
     c="$(choose \
       "Play" \
       "Open game folder" \
       "Open logs folder" \
+      "Collect logs (zip on the Desktop)" \
       "D3D9 renderer: $D3D9 → switch to $other_d3d9" \
       "x87 acceleration: $X87 → turn $other_x87" \
       "Retina resolution: $RETINA → turn $other_retina" \
       "FPS overlay: $FPS_HUD → turn $other_hud" \
+      "Debug Mode (detailed logs): $DEBUG → turn $other_debug" \
       "Wine configuration (winecfg)" \
       "Stop all running Wine processes" \
       "Reset Wine environment (keeps game files)")"
@@ -80,10 +88,17 @@ maintenance_menu() {
       "Play") return ;;
       "Open game folder") open "$GAME" ;;
       "Open logs folder") open "$LOGS" ;;
+      "Collect logs"*)
+        if zip="$("$RES/collect-logs.sh" | tail -1)" && [ -f "$zip" ]; then
+          open -R "$zip"; swgl_notify "Logs saved as ${zip##*/}"
+        else
+          swgl_alert "Could not collect the logs. See ~/Library/Logs/SWGLonMac/app.log"
+        fi ;;
       "D3D9 renderer"*) D3D9=$other_d3d9; swgl_save_settings ;;
       "x87 acceleration"*) X87=$other_x87; swgl_save_settings ;;
       "Retina resolution"*) RETINA=$other_retina; swgl_save_settings; ensure_prefix ;;
       "FPS overlay"*) FPS_HUD=$other_hud; swgl_save_settings ;;
+      "Debug Mode"*) DEBUG=$other_debug; swgl_save_settings ;;
       "Wine configuration"*) ensure_prefix; wine_cmd winecfg ;;
       "Stop all"*) ( swgl_wine_env; "$WINE_HOME/bin/wineserver" -k ) ;;
       "Reset Wine environment"*)
@@ -114,7 +129,9 @@ fi
 
 cd "$GAME" || exit 1
 export PATH="$RES/bin:$PATH"
-echo "Launching Java launcher in $GAME (D3D9=$D3D9 X87=$X87 RETINA=$RETINA)"
+# Debug Mode leaves the launcher's own debug switch (a "SWGlauncherdebug" file here) off: it
+# also changes what the launcher asks SWGL's servers ("relog-testing" for test accounts).
+echo "Launching Java launcher in $GAME (D3D9=$D3D9 X87=$X87 RETINA=$RETINA DEBUG=$DEBUG)"
 exec "$JAVA_HOME/bin/java" \
   -Xdock:name="SWGL on Mac" -Xdock:icon="$RES/AppIcon.icns" \
   -Dfile.encoding=UTF-8 -Dswgl.res="$RES" -Dswgl.game="$GAME" \
