@@ -141,13 +141,10 @@ struct SettingsView: View {
     }
     .formStyle(.grouped)
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      Label("Changes apply the next time the game starts.", systemImage: "info.circle")
+      Text("Changes apply the next time the game starts.")
         .font(.callout)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .glassEffect(.regular, in: .capsule)
-        .padding(.bottom, 16)
+        .foregroundStyle(.red)
+        .padding(.bottom, 18)
     }
     .frame(width: 520)
     .fixedSize(horizontal: false, vertical: true)
@@ -169,23 +166,31 @@ struct MouseSpeedRow: View {
             .fixedSize(horizontal: false, vertical: true)
         }
         Spacer(minLength: 16)
-        HStack(spacing: 3) {
-          TextField("Speed", value: $settings.mouseSpeed,
-                    format: .number.precision(.fractionLength(0...2)))
-            .labelsHidden()
-            .multilineTextAlignment(.trailing)
-            .frame(width: 52)
-          Text("×").foregroundStyle(.secondary)
-        }
+        // As wide as the widest value, so the description doesn't rewrap while dragging.
+        Text("0.00×")
+          .monospacedDigit()
+          .hidden()
+          .overlay(alignment: .trailing) {
+            Text(Settings.format(settings.mouseSpeed) + "×")
+              .monospacedDigit()
+              .foregroundStyle(.secondary)
+              .contentTransition(.numericText(value: settings.mouseSpeed))
+              .animation(.snappy, value: settings.mouseSpeed)
+          }
       }
-      HStack(spacing: 12) {
+      HStack(alignment: .top, spacing: 12) {
+        // Ticks at halvings and doublings, evenly spaced on the log scale; the fill grows
+        // from 1×.
         Slider(value: $settings.mouseSpeedSlider,
-               in: log2(Settings.sliderLimits.lowerBound)...log2(Settings.sliderLimits.upperBound)) {
+               in: log2(Settings.sliderLimits.lowerBound)...log2(Settings.sliderLimits.upperBound),
+               neutralValue: 0) {
           Text("Mouse-Look Speed")
-        } minimumValueLabel: {
-          Image(systemName: "tortoise").foregroundStyle(.secondary)
-        } maximumValueLabel: {
-          Image(systemName: "hare").foregroundStyle(.secondary)
+        } ticks: {
+          SliderTick("0.25×", -2.0)
+          SliderTick("0.5×", -1.0)
+          SliderTick("1×", 0.0)
+          SliderTick("2×", 1.0)
+          SliderTick("4×", 2.0)
         }
         .labelsHidden()
         Button("Reset") { settings.mouseSpeed = 1 }

@@ -71,6 +71,14 @@ JDK_INCLUDE="$(cd "$(dirname "$(realpath "$JAVAC")")/../include" && pwd)"
 
 mkdir -p "$R/jre"
 tar -xzf "$jre_tgz" -C "$R/jre" --strip-components 1
+# AppKit picks the design by the SDK the process's executable was linked against; Zulu's java
+# says macOS 11.1, which gave the launcher's About panel, alerts and Sparkle's windows the
+# pre-26 look. Claim the current SDK instead (the launcher runs unchanged on it); vtool
+# breaks the signature, so sign again (release.sh signs it for real).
+java_bin="$R/jre/Contents/Home/bin/java"
+xcrun vtool -set-build-version macos 11.0 "$(xcrun --show-sdk-version)" -replace -output "$java_bin.sdk" "$java_bin" 2>/dev/null
+mv "$java_bin.sdk" "$java_bin" && chmod 755 "$java_bin"
+codesign --force --sign - "$java_bin"
 tar -xJf "$wine_txz" -C "$R"
 mkdir -p "$R/java"
 "$JAVAC" --release 8 -Xlint:-options -encoding UTF-8 -cp "$R/jre/Contents/Home/lib/ext/jfxrt.jar" \

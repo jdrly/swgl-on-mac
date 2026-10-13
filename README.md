@@ -38,7 +38,7 @@ The app is signed and notarized by Apple.
   [Reporting problems](#reporting-problems)).
 - **Settings:** *Retina Mode* (full-resolution rendering, on by default), *Show Metal HUD*
   (frame rate overlay), *Game Mode* (macOS Game Mode in full screen, on by default),
-  *Mouse-Look Speed* (how fast the camera turns, 0.1× to 10×; 1× is the same as on Windows),
+  *Mouse-Look Speed* (how fast the camera turns, 0.25× to 4×; 1× is the same as on Windows),
   *Debug Mode* (much more detailed game logs, at some cost in performance; off by default).
   Changes apply the next time the game starts.
 - **Maintenance menu:** hold Option while opening the app for logs, Collect Logs and Debug
@@ -191,6 +191,8 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG nee
   Apple's D3DMetal is removed, since SWG does not use it.
 - [d9mt](https://github.com/jdrly/d9mt) (zlib, bridge LGPL-2.1+), with DXVK and DXMT code.
 - [Azul Zulu](https://www.azul.com/downloads/) 8 with JavaFX (GPLv2 with Classpath Exception).
+  The build changes one thing in it: the SDK version recorded in `bin/java`'s header
+  (`vtool -set-build-version`), so macOS gives the launcher's windows the current design.
 - [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) for the Windows helpers.
 
 ## License
