@@ -188,6 +188,14 @@ EOF
 plutil -lint -s "$R/gamemode/Info.plist"
 ( cd "$R/wine/bin" && rm -f function_grep.pl widl winebuild winecpp winedump wineg++ winegcc winemaker wmc wrc )
 find "$R/wine/lib/wine" -name '*.a' -delete
+# Wine's Windows-side modules ship with full DWARF debug info: ~930 MB of the app, ~370 MB
+# without. Crash backtraces still name modules and exports; for source lines, symbolize
+# against the pinned release tarball. Homebrew mingw-w64's strip, per architecture (it keeps
+# the "Wine builtin DLL" marker); files that are not PE are left alone.
+for arch in i386:i686 x86_64:x86_64; do
+  find "$R/wine/lib/wine" -path "*/${arch%%:*}-windows/*" -type f -print0 |
+    xargs -0 -n 64 "/opt/homebrew/bin/${arch##*:}-w64-mingw32-strip" --strip-debug 2>/dev/null || true
+done
 # Apple's D3DMetal (Direct3D 11/12 via the Game Porting Toolkit) and the DXGI tree that uses it:
 # SWG is Direct3D 9 on d9mt, so it is never loaded, and it is Apple's to distribute.
 # libd3dshared.dylib stays (ntdll loads it at startup), with its license.

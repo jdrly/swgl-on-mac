@@ -211,7 +211,8 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Fixes SWG needed:
   with `patches/winemac-swg.patch` and `patches/winemac-input.patch` into `prebuilt/winemac`.
 - `build.sh` assembles `dist/SWGL on Mac.app` from pinned, checksummed downloads plus those
   pieces (`--install` also copies it to /Applications). It needs a JDK 9+ (`javac` and
-  `jni.h`; Homebrew `openjdk` is found automatically, or set `JAVAC`) and Xcode's Swift.
+  `jni.h`; Homebrew `openjdk` is found automatically, or set `JAVAC`), Xcode's Swift, and
+  Homebrew `mingw-w64` (to strip debug info from Wine's Windows modules).
 - `scripts/release.sh` signs the app with a Developer ID (hardened runtime, entitlements in
   `src/entitlements`), builds the DMG, notarizes and staples it, generates the update feed
   (`appcast.xml` and delta updates, signed with the EdDSA key from Sparkle's `generate_keys`
