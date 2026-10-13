@@ -58,7 +58,8 @@ while IFS= read -r -d '' f; do
   case "$kind" in Mach-O*) ;; *) continue ;; esac
   case "$f" in "$APP/Contents/MacOS/"*|"$APP/Contents/Helpers/"*/Contents/MacOS/*) continue ;; esac
   # Code Apple signed itself (libd3dshared from the Game Porting Toolkit) keeps that signature.
-  codesign -dvv "$f" 2>&1 | grep -q '^Authority=Software Signing$' && continue
+  # (Capture first: with pipefail, grep -q exiting early fails the pipeline and the skip never ran.)
+  case "$(codesign -dvv "$f" 2>&1)" in *$'\nAuthority=Software Signing\n'*) continue ;; esac
   case "$kind:$f" in
     *executable*:"$APP/Contents/Resources/wine/"*) sign --entitlements "$ENT/wine.plist" "$f" ;;
     *executable*:"$APP/Contents/Resources/jre/"*) sign --entitlements "$ENT/java.plist" "$f" ;;
