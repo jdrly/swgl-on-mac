@@ -179,6 +179,10 @@ public final class UpdateWindow: NSObject, NSWindowDelegate {
       window.title = "Software Update"
       window.isReleasedWhenClosed = false
       window.delegate = self
+      // Center at the content's real size; centred while still empty, the window would grow
+      // from there and end up low on the screen.
+      hosting.view.layoutSubtreeIfNeeded()
+      window.setContentSize(hosting.view.fittingSize)
       window.center()
       self.window = window
     }

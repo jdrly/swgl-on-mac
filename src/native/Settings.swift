@@ -228,13 +228,48 @@ struct MouseSpeedRow: View {
 
 // MARK: - App
 
+// The window is opened here, at launch and on every reopen (the launcher's Settings… on a
+// running helper), not by a SwiftUI scene: an accessory app launched by another app gets no
+// scene window until it is reopened, so the first Settings… showed nothing.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
   private var launcherExit: DispatchSourceProcess?
+  private var window: NSWindow?
+  private lazy var settings = Settings()
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
-  // Opened from the launcher: go when it does.
   func applicationDidFinishLaunching(_ notification: Notification) {
+    showWindow()
+    watchLauncher()
+  }
+
+  func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+    showWindow()
+    return false
+  }
+
+  private func showWindow() {
+    if window == nil {
+      let hosting = NSHostingController(rootView: SettingsView(settings: settings))
+      hosting.sizingOptions = [.preferredContentSize]
+      let window = NSWindow(contentViewController: hosting)
+      window.styleMask = [.titled, .closable]
+      window.title = "SWGL on Mac Settings"
+      window.isReleasedWhenClosed = false
+      // Center at the content's real size; centred while still empty, the window would grow
+      // from there and end up low on the screen.
+      hosting.view.layoutSubtreeIfNeeded()
+      window.setContentSize(hosting.view.fittingSize)
+      window.center()
+      self.window = window
+    }
+    NSApp.activate()
+    window?.makeKeyAndOrderFront(nil)
+  }
+
+  // Opened from the launcher: go when it does.
+  private func watchLauncher() {
     let arguments = CommandLine.arguments
     guard arguments.count > 1, let pid = pid_t(arguments[1]), pid > 0 else { return }
     let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit, queue: .main)
@@ -248,15 +283,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct SettingsApp: App {
   @NSApplicationDelegateAdaptor private var delegate: AppDelegate
-  // The App value is created once, so it can own the model directly.
-  private let settings = Settings()
 
+  // No scene window of its own (see AppDelegate); an app needs a scene.
   var body: some Scene {
-    Window("SWGL on Mac Settings", id: "settings") {
-      SettingsView(settings: settings)
-        .onAppear { NSApp.activate() }
-    }
-    .windowResizability(.contentSize)
-    .commands { CommandGroup(replacing: .newItem) {} }
+    SwiftUI.Settings { EmptyView() }
   }
 }

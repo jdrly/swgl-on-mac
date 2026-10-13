@@ -412,6 +412,10 @@ struct SetupApp: App {
     }
     .windowStyle(.hiddenTitleBar)
     .windowResizability(.contentSize)
+    // Open the window at every launch: SwiftUI would otherwise remember that it was closed
+    // last time and start with no window.
+    .defaultLaunchBehavior(.presented)
+    .restorationBehavior(.disabled)
     .commands { CommandGroup(replacing: .newItem) {} }
   }
 }

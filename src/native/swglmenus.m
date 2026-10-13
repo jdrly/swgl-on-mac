@@ -108,6 +108,9 @@
                                             @"../Helpers/SWGL on Mac Settings.app"]].URLByStandardizingPath;
     NSWorkspaceOpenConfiguration *config = [NSWorkspaceOpenConfiguration configuration];
     config.arguments = @[[NSString stringWithFormat:@"%d", getpid()]];
+    // Activation is cooperative: without handing it over, the helper may not take focus and
+    // its window opens behind the launcher.
+    [NSApp yieldActivationToApplicationWithBundleIdentifier:@"io.github.jdrly.swglonmac.settings"];
     [NSWorkspace.sharedWorkspace openApplicationAtURL:helper configuration:config
                                     completionHandler:^(NSRunningApplication *app, NSError *error) {
         if (error) NSLog(@"SWGL on Mac: could not open the settings: %@", error);
