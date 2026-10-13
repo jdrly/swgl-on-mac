@@ -36,5 +36,20 @@
 	<true/>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+	<!-- Sparkle (src/native/swglupdates.m). SUEnableAutomaticChecks here turns automatic
+	     checks on for everyone without Sparkle's permission prompt (Features menu toggle);
+	     installing always takes a click. -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/jdrly/swgl-on-mac/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>yfxY4ORQfPcQWUMIenGgR0JIBYcL3+Osi3BP4KmPAH8=</string>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
 </dict>
 </plist>
