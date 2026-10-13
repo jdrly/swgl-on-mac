@@ -45,7 +45,7 @@ The app is signed and notarized by Apple.
 - **The chase camera pulls in at every wall.** That is the game's camera collision. The
   in-game option *Simple Camera Collision*, or `cameraSimpleCollision=1` under
   `[ClientGame/FreeChaseCamera]` in `custom.cfg`, makes it calmer.
-- Only the standard client (`SwgClient_r.exe`) is supported; the 64-bit client is untested.
+- The 64-bit test client that the launcher can download for QA testers is not supported.
 - Apple Silicon only.
 
 ## How it works
