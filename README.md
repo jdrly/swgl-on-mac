@@ -2,8 +2,15 @@
 
 A native macOS app for playing [SWG Legends](https://swglegends.com) on Apple Silicon Macs.
 
-> **Unofficial.** SWGL on Mac is a community project and is not affiliated with or endorsed
-> by the SWG Legends team. It runs their official launcher and game client unchanged.
+> **SWGL on Mac is an unofficial community project.** It is not made, endorsed or supported
+> by the SWG Legends team. SWG Legends does not officially support mods or clients that don't
+> come directly from them, so using SWGL on Mac is at your own risk, and the SWG Legends team
+> can't help with problems it causes. It runs their official launcher and game client
+> unchanged.
+>
+> **All support for SWGL on Mac comes from its developer, Jan Drlý (Pharaphobia).** Please send
+> questions, bug reports and logs to Pharaphobia on Discord or as a
+> [GitHub issue](https://github.com/jdrly/swgl-on-mac/issues), never to the SWG Legends team.
 
 The official Java launcher runs natively (Zulu 8 + JavaFX, arm64). The 32-bit DirectX 9 game
 client runs in a bundled Wine (CrossOver 26.3 based, WoW64, with x87 acceleration) on
@@ -44,7 +51,9 @@ The app is signed and notarized by Apple.
 
 1. Choose **SWGL on Mac → Collect Logs…** (in the launcher's menu bar). It saves
    `SWGL-on-Mac-logs-<date>.zip` to your Desktop and shows it in Finder.
-2. Send that zip with a short description of what happened and when.
+2. Send that zip with a short description of what happened and when to **Pharaphobia on
+   Discord** or attach it to a [GitHub issue](https://github.com/jdrly/swgl-on-mac/issues).
+   Please don't send it to the SWG Legends team: they don't support SWGL on Mac.
 
 The zip holds the app's logs, settings, system details (Mac model, macOS, displays) and
 recent crash reports. Your account password, account name, e-mail address, user name and
