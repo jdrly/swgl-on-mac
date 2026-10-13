@@ -23,6 +23,25 @@ DMG="$OUT/SWGL-on-Mac-$VERSION.dmg"
 
 sign() { codesign --force --timestamp --options runtime --sign "$IDENTITY" "$@"; }
 
+# Submits $1 and polls Apple until it is processed (retrying through network errors, up to
+# 3 hours); prints Apple's log and fails unless it was accepted.
+notarize() {
+  local id status="" deadline=$((SECONDS + 3 * 3600))
+  id="$(xcrun notarytool submit "$1" --keychain-profile "$PROFILE" --output-format json | plutil -extract id raw -)"
+  echo "  submission $id"
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    status="$(xcrun notarytool info "$id" --keychain-profile "$PROFILE" --output-format json 2>/dev/null |
+      plutil -extract status raw - 2>/dev/null || true)"
+    case "$status" in Accepted|Invalid|Rejected) break ;; esac
+    sleep 30
+  done
+  echo "  status: ${status:-unknown}"
+  if [ "$status" != Accepted ]; then
+    xcrun notarytool log "$id" --keychain-profile "$PROFILE" >&2 || true
+    exit 1
+  fi
+}
+
 echo "[release] $VERSION: copying the app"
 rm -rf "$OUT"
 mkdir -p "$OUT"
@@ -38,6 +57,8 @@ while IFS= read -r -d '' f; do
   kind="$(file -b "$f")"
   case "$kind" in Mach-O*) ;; *) continue ;; esac
   case "$f" in "$APP/Contents/MacOS/"*|"$APP/Contents/Helpers/"*/Contents/MacOS/*) continue ;; esac
+  # Code Apple signed itself (libd3dshared from the Game Porting Toolkit) keeps that signature.
+  codesign -dvv "$f" 2>&1 | grep -q '^Authority=Software Signing$' && continue
   case "$kind:$f" in
     *executable*:"$APP/Contents/Resources/wine/"*) sign --entitlements "$ENT/wine.plist" "$f" ;;
     *executable*:"$APP/Contents/Resources/jre/"*) sign --entitlements "$ENT/java.plist" "$f" ;;
@@ -61,13 +82,7 @@ hdiutil create -quiet -volname "SWGL on Mac $VERSION" -srcfolder "$stage" -fs HF
 rm -rf "$stage"
 codesign --force --timestamp --sign "$IDENTITY" "$DMG"
 echo "[release] notarizing the disk image"
-xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait --output-format json >"$OUT/notary.json" || true
-status="$(plutil -extract status raw "$OUT/notary.json")"
-if [ "$status" != Accepted ]; then
-  echo "notarization: $status" >&2
-  xcrun notarytool log "$(plutil -extract id raw "$OUT/notary.json")" --keychain-profile "$PROFILE" >&2
-  exit 1
-fi
+notarize "$DMG"
 xcrun stapler staple "$DMG"
 
 spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"

@@ -144,7 +144,9 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG nee
   and related marks belong to their owners.
 - [Wine](https://www.winehq.org) (LGPL-2.1+), built by
   [athei/wine-build](https://github.com/athei/wine-build) from CodeWeavers' CrossOver sources;
-  this repository's changes to it are in `patches/`.
+  this repository's changes to it are in `patches/`. The bundled Wine includes Apple's
+  `libd3dshared.dylib` from the Game Porting Toolkit, under Apple's license (shipped beside it);
+  Apple's D3DMetal is removed, since SWG does not use it.
 - [d9mt](https://github.com/jdrly/d9mt) (zlib, bridge LGPL-2.1+), with DXVK and DXMT code.
 - [Azul Zulu](https://www.azul.com/downloads/) 8 with JavaFX (GPLv2 with Classpath Exception).
 - [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) for the Windows helpers.

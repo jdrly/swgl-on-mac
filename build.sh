@@ -134,6 +134,10 @@ EOF
 plutil -lint -s "$R/gamemode/Info.plist"
 ( cd "$R/wine/bin" && rm -f function_grep.pl widl winebuild winecpp winedump wineg++ winegcc winemaker wmc wrc )
 find "$R/wine/lib/wine" -name '*.a' -delete
+# Apple's D3DMetal (Direct3D 11/12 via the Game Porting Toolkit) and the DXGI tree that uses it:
+# SWG is Direct3D 9 on d9mt, so it is never loaded, and it is Apple's to distribute.
+# libd3dshared.dylib stays (ntdll loads it at startup), with its license.
+rm -rf "$R/wine/lib/external/D3DMetal.framework" "$R/wine/lib/wine/dxgi/gptk"
 
 
 printf 'wine %s\njre %s\nd9mt %s\napp %s\n' "$WINE_TAG" "$(basename "$JRE_URL" .tar.gz)" \
