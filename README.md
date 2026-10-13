@@ -151,4 +151,11 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Two fixes SWG nee
 - [Azul Zulu](https://www.azul.com/downloads/) 8 with JavaFX (GPLv2 with Classpath Exception).
 - [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) for the Windows helpers.
 
+## License
+
+The code in this repository is under the [zlib license](LICENSE), except
+`patches/winemac-swg.patch`, which modifies Wine and is under Wine's LGPL-2.1+. The files in
+`prebuilt/` and everything the build downloads keep their own licenses (see above; d9mt's are
+in `prebuilt/d9mt`).
+
 Developed by Jan Drlý (Pharaphobia).
