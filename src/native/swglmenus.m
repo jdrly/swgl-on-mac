@@ -115,7 +115,7 @@
                             NSForegroundColorAttributeName: NSColor.labelColor,
                             NSParagraphStyleAttributeName: centered };
     NSMutableAttributedString *credits = [[NSMutableAttributedString alloc]
-        initWithString:[NSString stringWithFormat:@"Unofficial Star Wars Galaxies: Legends\nclient for macOS\n"
+        initWithString:[NSString stringWithFormat:@"Unofficial client for macOS\n"
                                                    "Developed by %@\n", app[@"author"] ?: @"?"]
             attributes:body];
     for (NSString *key in @[@"repo", @"github"]) {
