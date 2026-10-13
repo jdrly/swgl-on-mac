@@ -31,12 +31,15 @@ RETINA=on         # on | off  (render at full Retina resolution)
 FPS_HUD=off       # on | off  (Apple's Metal performance HUD over the game)
 GAME_MODE=on      # on | off  (macOS Game Mode while the game is full screen)
 DEBUG=off         # on | off  (Debug Mode: much more logging from the game, see swgl_debug_env)
+MOUSE_SPEED=1     # mouse-look speed: Windows mickeys per mouse count (MOUSE_SPEEDS; 1 = Windows)
 [ -f "$SETTINGS" ] && . "$SETTINGS"
 [ "$D3D9" = mtld3d ] && D3D9=d9mt   # settings written by the former mtld3d build
+MOUSE_SPEEDS="0.5 0.75 1 1.25 1.5 1.75 2 2.5 3"
+case " $MOUSE_SPEEDS " in *" $MOUSE_SPEED "*) ;; *) MOUSE_SPEED=1 ;; esac
 
 swgl_settings() {
-  printf 'D3D9=%s\nX87=%s\nRETINA=%s\nFPS_HUD=%s\nGAME_MODE=%s\nDEBUG=%s\n' \
-    "$D3D9" "$X87" "$RETINA" "$FPS_HUD" "$GAME_MODE" "$DEBUG"
+  printf 'D3D9=%s\nX87=%s\nRETINA=%s\nFPS_HUD=%s\nGAME_MODE=%s\nDEBUG=%s\nMOUSE_SPEED=%s\n' \
+    "$D3D9" "$X87" "$RETINA" "$FPS_HUD" "$GAME_MODE" "$DEBUG" "$MOUSE_SPEED"
 }
 
 swgl_save_settings() {
@@ -116,11 +119,14 @@ apply_mac_driver_settings() {
   # mouse moves differently from Windows, so the turn speed would vary. Without acceleration
   # mouse-look is a constant 1:1.
   wine_cmd reg add 'HKCU\Control Panel\Mouse' /v MouseSpeed /t REG_SZ /d 0 /f >/dev/null
+  # Mouse-look moves come from GCMouse as device counts (patches/winemac-input.patch), like
+  # Windows raw input, so 1 turns as fast as on Windows; the Features menu scales it.
+  wine_cmd reg add "$key" /v RawMouseGameControllerScale /t REG_SZ /d "$MOUSE_SPEED" /f >/dev/null
 }
 
 apply_prefix_settings() {
   # Registry writes start Wine, so only redo them when the settings changed.
-  local stamp="$PREFIX/.swgl-applied" want="retina=$RETINA baseline=d9mt-1" had
+  local stamp="$PREFIX/.swgl-applied" want="retina=$RETINA baseline=d9mt-1 mouse=$MOUSE_SPEED" had
   had="$(cat "$stamp" 2>/dev/null)"
   [ "$had" = "$want" ] && return
   apply_mac_driver_settings || return

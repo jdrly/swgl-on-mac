@@ -4,8 +4,8 @@
 //
 //   App menu:  About SWGL on Mac (standard About panel), Open SWGL in Finder (the game folder, for mods),
 //              Collect Logs… (a zip for bug reports, Resources/collect-logs.sh)
-//   Features:  Retina Mode, Show Metal HUD, Game Mode, Debug Mode (settings.conf through
-//              Resources/settings.sh)
+//   Features:  Retina Mode, Show Metal HUD, Game Mode, Mouse-Look Speed, Debug Mode
+//              (settings.conf through Resources/settings.sh)
 
 #import <Cocoa/Cocoa.h>
 #include <jni.h>
@@ -46,7 +46,7 @@
     return values.count ? values : nil;
 }
 
-- (BOOL)isOn:(NSString *)key
+- (NSString *)setting:(NSString *)key
 {
     // Validation asks once per item each time the menu opens.
     if (!self.settings || -[self.settingsReadAt timeIntervalSinceNow] > 1.0) {
@@ -54,7 +54,12 @@
         if (values) self.settings = values;
         self.settingsReadAt = [NSDate date];
     }
-    return [self.settings[key] isEqualToString:@"on"];
+    return self.settings[key];
+}
+
+- (BOOL)isOn:(NSString *)key
+{
+    return [[self setting:key] isEqualToString:@"on"];
 }
 
 - (void)toggleSetting:(NSMenuItem *)item
@@ -66,10 +71,20 @@
     item.state = [self isOn:key] ? NSControlStateValueOn : NSControlStateValueOff;
 }
 
+- (void)setMouseSpeed:(NSMenuItem *)item
+{
+    NSDictionary *values = [self runSettings:@[@"MOUSE_SPEED", item.representedObject]];
+    if (values) self.settings = values;
+    self.settingsReadAt = [NSDate date];
+}
+
 - (BOOL)validateMenuItem:(NSMenuItem *)item
 {
     if (item.action == @selector(toggleSetting:))
         item.state = [self isOn:item.representedObject] ? NSControlStateValueOn : NSControlStateValueOff;
+    if (item.action == @selector(setMouseSpeed:))
+        item.state = [[self setting:@"MOUSE_SPEED"] isEqualToString:item.representedObject]
+            ? NSControlStateValueOn : NSControlStateValueOff;
     if (item.action == @selector(collectLogs:))
         return !self.collectingLogs;
     return item.action != nil;
@@ -245,6 +260,20 @@
     [features addItem:[self toggleItem:@"Retina Mode" key:@"RETINA"]];
     [features addItem:[self toggleItem:@"Show Metal HUD" key:@"FPS_HUD"]];
     [features addItem:[self toggleItem:@"Game Mode" key:@"GAME_MODE"]];
+    // Mouse-look moves are the mouse's own counts, as with Windows raw input, so 1× turns as
+    // fast as on Windows; the macOS pointer speed doesn't apply (MOUSE_SPEED in common.sh).
+    NSMenu *speeds = [[NSMenu alloc] initWithTitle:@"Mouse-Look Speed"];
+    for (NSString *speed in @[@"0.5", @"0.75", @"1", @"1.25", @"1.5", @"1.75", @"2", @"2.5", @"3"]) {
+        NSString *title = [speed isEqualToString:@"1"] ? @"1× (same as Windows)" : [speed stringByAppendingString:@"×"];
+        NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:@selector(setMouseSpeed:) keyEquivalent:@""];
+        item.target = self;
+        item.representedObject = speed;
+        [speeds addItem:item];
+    }
+    NSMenuItem *speedItem = [[NSMenuItem alloc] initWithTitle:@"Mouse-Look Speed" action:nil keyEquivalent:@""];
+    speedItem.submenu = speeds;
+    speedItem.toolTip = @"How fast the camera turns while you steer with the mouse. The in-game mouse sensitivity applies on top.";
+    [features addItem:speedItem];
     [features addItem:[NSMenuItem separatorItem]];
     // Much more logging from the game, at some cost in performance (swgl_debug_env in common.sh).
     NSMenuItem *debug = [self toggleItem:@"Debug Mode" key:@"DEBUG"];

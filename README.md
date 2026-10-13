@@ -37,7 +37,8 @@ The app is signed and notarized by Apple.
   folder (where mods and `custom.cfg` go), and *Collect Logs…* (see
   [Reporting problems](#reporting-problems)).
 - **Features menu:** *Retina Mode* (full-resolution rendering, on by default), *Show Metal HUD*
-  (frame rate overlay), *Game Mode* (macOS Game Mode in full screen, on by default), *Debug
+  (frame rate overlay), *Game Mode* (macOS Game Mode in full screen, on by default),
+  *Mouse-Look Speed* (how fast the camera turns; 1× is the same as on Windows), *Debug
   Mode* (much more detailed game logs, at some cost in performance; off by default). Changes
   apply the next time the game starts.
 - **Maintenance menu:** hold Option while opening the app for logs, Collect Logs and Debug
@@ -141,7 +142,8 @@ refreshes' worth of motion, so turning juddered and changed with every ⌘-Tab. 
   so the game sees all motion up to the moment it reads input.
 
 `GCMouse` reports device counts, like Windows raw input, so the macOS pointer speed setting
-does not affect mouse-look; the in-game mouse sensitivity does.
+does not affect mouse-look; *Features → Mouse-Look Speed* (`MOUSE_SPEED`, the driver's
+`RawMouseGameControllerScale`) and the in-game mouse sensitivity do.
 
 Mouse acceleration is off in the prefix (`MouseSpeed=0`): SWG applies Windows acceleration per
 input event, which Wine batches differently. Smooth camera also needs d9mt's display-paced
