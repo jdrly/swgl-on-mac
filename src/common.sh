@@ -186,12 +186,15 @@ enable_game_mode() {
   # the app's signature and entitlements, which macOS rejects inside a bundle they were not
   # made for (the process is killed with "Code Signature Invalid").
   local exe="$1" lib="$WINE_HOME/lib/wine/x86_64-unix" gm="$SUPPORT/GameMode/SWGLGame.app/Contents" m dir src
-  [ "$GAME_MODE" = on ] && [ -f "$RES/gamemode/Info.plist" ] && [ "$exe" = SwgClient_r.exe ] || return 0
-  src="$(stat -f '%i-%z-%m' "$lib/wine") $lib $(md5 -q "$RES/gamemode/Info.plist")"
+  # SwgClient_r.exe, or the 64-bit test client SwgClient_Latest-x64.exe; the bundle's
+  # executable takes the client's name (Info.plist template: @EXE@).
+  case "$exe" in SwgClient_*.exe) ;; *) return 0 ;; esac
+  [ "$GAME_MODE" = on ] && [ -f "$RES/gamemode/Info.plist" ] || return 0
+  src="$(stat -f '%i-%z-%m' "$lib/wine") $lib $exe $(md5 -q "$RES/gamemode/Info.plist")"
   if [ "$(cat "$gm/.source" 2>/dev/null)" != "$src" ] || [ ! -x "$gm/MacOS/$exe" ]; then
     rm -rf "${gm%/Contents}" && mkdir -p "$gm/MacOS" &&
       cp -c "$lib/wine" "$gm/MacOS/$exe" && { codesign --remove-signature "$gm/MacOS/$exe" 2>/dev/null || true; } &&
-      ln -s "$lib/ntdll.so" "$gm/MacOS/ntdll.so" && cp "$RES/gamemode/Info.plist" "$gm/Info.plist" &&
+      ln -s "$lib/ntdll.so" "$gm/MacOS/ntdll.so" && sed "s/@EXE@/$exe/" "$RES/gamemode/Info.plist" >"$gm/Info.plist" &&
       echo "$src" >"$gm/.source" || { echo "Game Mode bundle not created"; return 0; }
     echo "Assembled the Game Mode bundle in ${gm%/Contents}"
   fi

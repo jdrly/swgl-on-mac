@@ -90,12 +90,15 @@ rm -rf "$R/wine/include" "$R/wine/lib/wine/tests" "$R/wine/share/man"
 # loads by default (named "mtld3d" in this Wine), marked builtin with the release's own
 # winebuild; its winemetal bridge replaces the default winemetal (DXMT keeps its own tree).
 D9=prebuilt/d9mt
-for f in d3d9.dll winemetal32.dll winemetal64.dll winemetal.so; do
+for f in d3d9.dll d3d9-x64.dll winemetal32.dll winemetal64.dll winemetal.so; do
   [ -f "$D9/$f" ] || { echo "Missing $D9/$f; run scripts/build-d9mt.sh" >&2; exit 1; }
 done
 W="$R/wine/lib/wine"
 install -m 644 "$D9/d3d9.dll" "$W/d3d9/mtld3d/i386-windows/d3d9.dll"
 "$R/wine/bin/winebuild" --builtin "$W/d3d9/mtld3d/i386-windows/d3d9.dll"
+# 64-bit clients (SWG Legends' 64-bit test client) get d9mt too, not the tree's own mtld3d.
+install -m 644 "$D9/d3d9-x64.dll" "$W/d3d9/mtld3d/x86_64-windows/d3d9.dll"
+"$R/wine/bin/winebuild" --builtin "$W/d3d9/mtld3d/x86_64-windows/d3d9.dll"
 install -m 644 "$D9/winemetal32.dll" "$W/i386-windows/winemetal.dll"
 install -m 644 "$D9/winemetal64.dll" "$W/x86_64-windows/winemetal.dll"
 install -m 755 "$D9/winemetal.so" "$W/x86_64-unix/winemetal.so"
@@ -118,7 +121,7 @@ cat >"$R/gamemode/Info.plist" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleExecutable</key><string>SwgClient_r.exe</string>
+	<key>CFBundleExecutable</key><string>@EXE@</string>
 	<key>CFBundleIdentifier</key><string>io.github.jdrly.swglonmac.game</string>
 	<key>CFBundleName</key><string>SWGL on Mac</string>
 	<key>CFBundlePackageType</key><string>APPL</string>

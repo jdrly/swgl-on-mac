@@ -2,6 +2,7 @@
 # Builds the d9mt pieces the app ships into prebuilt/d9mt/, from Jan's public fork
 # https://github.com/jdrly/d9mt at a pinned commit, with that repo's own "Build" recipe:
 #   d3d9.dll         32-bit D3D9 -> Metal driver (PE, i686), stripped
+#   d3d9-x64.dll     64-bit driver (PE, x86_64) for 64-bit clients, stripped
 #   winemetal32.dll  bridge, PE side (i686)       winemetal64.dll  bridge, PE side (x86_64)
 #   winemetal.so     bridge, macOS side (x86_64), includes the AIR shader compiler
 #   LICENSE, LICENSES/, THIRD_PARTY_NOTICES.md   (a binary release must carry them)
@@ -37,11 +38,15 @@ echo "[d9mt] bridge"
 SMOKE=0 scripts/build-bridge.sh >build-bridge.log 2>&1 || { tail -20 build-bridge.log; exit 1; }
 echo "[d9mt] driver (i686)"
 ARCH=x86 scripts/build-driver.sh >build-driver.log 2>&1 || { tail -20 build-driver.log; exit 1; }
+echo "[d9mt] driver (x86_64)"
+ARCH=x64 scripts/build-driver.sh >build-driver-x64.log 2>&1 || { tail -20 build-driver-x64.log; exit 1; }
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
 install -m 644 build/driver/d3d9.dll "$OUT/d3d9.dll"
 i686-w64-mingw32-strip "$OUT/d3d9.dll"
+install -m 644 build/driver-x64/d3d9.dll "$OUT/d3d9-x64.dll"
+x86_64-w64-mingw32-strip "$OUT/d3d9-x64.dll"
 install -m 644 build/bridge/winemetal32.dll "$OUT/winemetal32.dll"
 install -m 644 build/bridge/winemetal64.dll "$OUT/winemetal64.dll"
 install -m 755 build/bridge/winemetal.so "$OUT/winemetal.so"
