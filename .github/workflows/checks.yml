@@ -24,9 +24,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Syntax
-        run: git ls-files -z '*.sh' | xargs -0 -n 1 bash -n
-
       - name: shellcheck
         run: git ls-files -z '*.sh' | xargs -0 shellcheck -S warning
 
@@ -61,6 +58,10 @@ jobs:
           brew install --quiet mingw-w64
           test -x /opt/homebrew/bin/x86_64-w64-mingw32-strip
           test -x /opt/homebrew/bin/i686-w64-mingw32-strip
+
+      # The scripts run under macOS's /bin/bash 3.2, so check their syntax with that one.
+      - name: Syntax (bash 3.2)
+        run: git ls-files -z '*.sh' | xargs -0 -n 1 /bin/bash -n
 
       - name: Build
         run: ./build.sh
