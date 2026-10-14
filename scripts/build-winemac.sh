@@ -2,7 +2,9 @@
 # Rebuilds prebuilt/winemac: Wine's Mac driver from the exact athei/wine commit of the
 # bundled Wine, with patches/winemac-swg.patch (raw mouse while the game hides the
 # cursor, stale SetCursorPos handling) and then patches/winemac-input.patch (raw mouse
-# moves sent from an input thread, GameController's GCMouse as their source) applied;
+# moves sent from an input thread, GameController's GCMouse as their source) applied,
+# then patches/winemac-native-fullscreen.patch (the NativeFullscreen Mac Driver option,
+# off by default: a window covering a screen enters its own full-screen Space; #9);
 # see the patch comments. Only the driver is built (the x86_64 unix library and both
 # PE sides); everything else comes from the release.
 #
@@ -33,7 +35,7 @@ fi
 
 # Fresh, patched copy of the sources.
 rm -rf "$W/src" && cp -R "$W/src-$WINE_COMMIT" "$W/src"
-for p in patches/winemac-swg.patch patches/winemac-input.patch; do
+for p in patches/winemac-swg.patch patches/winemac-input.patch patches/winemac-native-fullscreen.patch; do
   patch -d "$W/src" -p1 --quiet <"$p"
 done
 

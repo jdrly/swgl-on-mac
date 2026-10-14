@@ -1,0 +1,322 @@
+diff -ru a/dlls/winemac.drv/cocoa_app.m b/dlls/winemac.drv/cocoa_app.m
+--- a/dlls/winemac.drv/cocoa_app.m
++++ b/dlls/winemac.drv/cocoa_app.m
+@@ -826,6 +826,17 @@
+         }
+ 
+         [self updateFullscreenPresentation:active];
++
++        /* NativeFullscreen: activation is when a waiting window can enter
++           its Space. */
++        if (native_fullscreen && active)
++        {
++            for (window in [NSApp windows])
++            {
++                if ([window isKindOfClass:[WineWindow class]])
++                    [window scheduleNativeFullscreenUpdate];
++            }
++        }
+     }
+ 
+     /* While the application is active and a visible window covers the screen
+diff -ru a/dlls/winemac.drv/cocoa_window.h b/dlls/winemac.drv/cocoa_window.h
+--- a/dlls/winemac.drv/cocoa_window.h
++++ b/dlls/winemac.drv/cocoa_window.h
+@@ -71,6 +71,20 @@
+     NSRect nonFullscreenFrame;
+     NSTimeInterval enteredFullScreenTime;
+ 
++    /* NativeFullscreen: the window is in (or entering) a full-screen Space
++       because it covered a screen, not because the user asked for one. */
++    BOOL nativeFullscreenAuto;
++    /* The user left that Space; don't re-enter until the window stops
++       covering the screen. */
++    BOOL nativeFullscreenDeclined;
++    /* We asked AppKit to leave the Space (vs. the user doing it). */
++    BOOL nativeFullscreenExitRequested;
++    NSTimeInterval nativeFullscreenFailedTime;
++    /* The content rect Wine last asked for (Cocoa coordinates).  In a Space
++       AppKit owns the frame, so this is what decides whether the window
++       still wants one. */
++    NSRect wineRequestedContentRect;
++
+     int draggingPhase;
+     NSPoint dragStartPosition;
+     NSPoint dragWindowStartPosition;
+@@ -106,6 +120,7 @@
+     - (NSInteger) minimumLevelForActive:(BOOL)active;
+     - (void) updateFullscreen;
+     - (BOOL) coversMenuBarScreen;
++    - (void) scheduleNativeFullscreenUpdate;
+ 
+     - (void) postKeyEvent:(NSEvent *)theEvent;
+     - (void) postBroughtForwardEvent;
+diff -ru a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -1162,7 +1162,15 @@
+     {
+         NSUInteger style = [self styleMask];
+ 
+-        if (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
++        /* NativeFullscreen: a window that covers a screen (a borderless
++           Direct3D full-screen window, say) may have a Space of its own, and
++           keeps it while it is in one. */
++        if (native_fullscreen && (nativeFullscreenAuto || [self wantsNativeFullscreen]))
++        {
++            behavior |= NSWindowCollectionBehaviorFullScreenPrimary;
++            behavior &= ~NSWindowCollectionBehaviorFullScreenAuxiliary;
++        }
++        else if (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
+             style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized &&
+             !(self.parentWindow || self.latentParentWindow))
+         {
+@@ -1252,6 +1260,12 @@
+     {
+         NSInteger level;
+ 
++        /* Alone in its Space: no need to float (WS_EX_TOPMOST, which
++           Direct3D sets on full-screen windows), and Mission Control
++           expects a full-screen window at the normal level. */
++        if ([self styleMask] & NSWindowStyleMaskFullScreen)
++            return NSNormalWindowLevel;
++
+         if (self.floating && (active || topmost_float_inactive == TOPMOST_FLOAT_INACTIVE_ALL ||
+                               (topmost_float_inactive == TOPMOST_FLOAT_INACTIVE_NONFULLSCREEN && !fullscreen)))
+             level = NSFloatingWindowLevel;
+@@ -1930,8 +1944,97 @@
+ 
+             [controller adjustWindowLevels];
+         }
++
++        [self scheduleNativeFullscreenUpdate];
+     }
+ 
++    /* NativeFullscreen: the screen this window should have a Space on, if
++       any.  That is a visible top-level window covering a whole screen, the
++       way a Direct3D full-screen window or a borderless "windowed full
++       screen" game window does. */
++    - (NSScreen*) screenForNativeFullscreen
++    {
++        NSRect contentRect;
++        NSScreen* screen;
++
++        if (!native_fullscreen) return nil;
++        if (self.parentWindow || self.latentParentWindow) return nil;
++        if (self.disabled || self.noForeground || maximized || closing) return nil;
++        if (![self isVisible] || [self isMiniaturized]) return nil;
++        /* A real display mode switch captures the displays and puts the
++           window above the capture shield; a Space adds nothing there. */
++        if ([[WineApplicationController sharedController] areDisplaysCaptured]) return nil;
++
++        /* In a Space AppKit owns the frame, so go by what Wine asked for. */
++        if ([self styleMask] & NSWindowStyleMaskFullScreen)
++            contentRect = wineRequestedContentRect;
++        else
++            contentRect = [self contentRectForFrameRect:self.wine_fractionalFrame];
++        if (!(screen = screen_covered_by_rect(contentRect, [NSScreen screens]))) return nil;
++        /* Exactly one screen: a window spanning several would shrink to one. */
++        if (!NSContainsRect(NSInsetRect([screen frame], -1, -1), contentRect)) return nil;
++
++        /* AppKit keeps a full-screen window below the camera housing of a
++           notched display, which would make the window smaller than the
++           display mode the game set.  Stay with the Dock and menu bar hidden
++           there. */
++        if (screen.safeAreaInsets.top > 0) return nil;
++
++        return screen;
++    }
++
++    - (BOOL) wantsNativeFullscreen
++    {
++        return [self screenForNativeFullscreen] != nil;
++    }
++
++    /* Coalesce: Direct3D changes the style, then the frame, and a game may
++       recreate or move its window more than once while it starts. */
++    - (void) scheduleNativeFullscreenUpdate
++    {
++        if (!native_fullscreen) return;
++        [NSObject cancelPreviousPerformRequestsWithTarget:self
++                                                 selector:@selector(updateNativeFullscreen)
++                                                   object:nil];
++        [self performSelector:@selector(updateNativeFullscreen) withObject:nil afterDelay:0.25];
++    }
++
++    - (void) updateNativeFullscreen
++    {
++        BOOL inSpace = ([self styleMask] & NSWindowStyleMaskFullScreen) != 0;
++        BOOL wants;
++
++        /* windowDid{Enter,Exit}FullScreen look again. */
++        if (enteringFullScreen || exitingFullScreen) return;
++
++        wants = [self wantsNativeFullscreen];
++        if (!wants && !inSpace)
++            nativeFullscreenDeclined = FALSE;
++
++        if (!inSpace)
++        {
++            /* Only for the active app: entering a Space switches to it. */
++            if (wants && !nativeFullscreenDeclined && [NSApp isActive] &&
++                [[NSProcessInfo processInfo] systemUptime] - nativeFullscreenFailedTime > 2.0)
++            {
++                ERR(@"NativeFullscreen: entering a Space for %@\n", self);
++                nativeFullscreenAuto = TRUE;
++                [self adjustFullScreenBehavior:[self collectionBehavior]];
++                /* Direct3D made it topmost (floating); a full-screen window
++                   starts from the normal level.  The level pass after the
++                   transition (or a failure) sets it again. */
++                [self setLevel:NSNormalWindowLevel];
++                [super toggleFullScreen:nil];
++            }
++        }
++        else if (nativeFullscreenAuto && !wants)
++        {
++            ERR(@"NativeFullscreen: leaving the Space of %@\n", self);
++            nativeFullscreenExitRequested = TRUE;
++            [super toggleFullScreen:nil];
++        }
++    }
++
+     - (void) setFrameAndWineFrame:(NSRect)frame
+     {
+         [self setFrame:frame display:YES];
+@@ -1970,6 +2073,28 @@
+         [queue discardEventsMatchingMask:event_mask_for_type(WINDOW_FRAME_CHANGED)
+                                forWindow:self];
+ 
++        /* NativeFullscreen: in a Space AppKit owns the frame.  Remember what
++           Wine asked for; a frame that no longer covers the screen (the game
++           went windowed) is where the window goes when it leaves the Space. */
++        if (nativeFullscreenAuto && ([self styleMask] & NSWindowStyleMaskFullScreen))
++        {
++            if (!NSIsEmptyRect(contentRect))
++            {
++                wineRequestedContentRect = contentRect;
++                if (screen_covered_by_rect(contentRect, [NSScreen screens]))
++                {
++                    /* Still full screen: tell Wine where the window really is. */
++                    if ([self isOrderedIn])
++                        [self windowDidResize:nil skipSizeMove:TRUE];
++                }
++                else
++                    nonFullscreenFrame = [[self class] frameRectForContentRect:contentRect
++                                                                     styleMask:([self styleMask] & ~NSWindowStyleMaskFullScreen)];
++            }
++            [self scheduleNativeFullscreenUpdate];
++            return;
++        }
++
+         if (!NSIsEmptyRect(contentRect))
+         {
+             NSRect frame, oldFrame;
+@@ -3106,11 +3231,20 @@
+         enteredFullScreenTime = [[NSProcessInfo processInfo] systemUptime];
+         if (pendingOrderOut)
+             [self doOrderOut];
++        else if (nativeFullscreenAuto)
++        {
++            [[WineApplicationController sharedController] adjustWindowLevels];
++            /* Wine may have moved the window during the animation. */
++            [self scheduleNativeFullscreenUpdate];
++        }
+     }
+ 
+     - (void) windowDidExitFullScreen:(NSNotification*)notification
+     {
+         exitingFullScreen = FALSE;
++        nativeFullscreenAuto = FALSE;
++        nativeFullscreenExitRequested = FALSE;
++        [self adjustFullScreenBehavior:[self collectionBehavior]];
+         [self setFrameAndWineFrame:nonFullscreenFrame];
+         [self windowDidResize:nil];
+         if (pendingOrderOut)
+@@ -3121,6 +3255,14 @@
+     {
+         enteringFullScreen = FALSE;
+         enteredFullScreenTime = 0;
++        if (nativeFullscreenAuto)
++        {
++            ERR(@"NativeFullscreen: AppKit did not enter a Space for %@\n", self);
++            nativeFullscreenAuto = FALSE;
++            nativeFullscreenFailedTime = [[NSProcessInfo processInfo] systemUptime];
++            [self adjustFullScreenBehavior:[self collectionBehavior]];
++            [[WineApplicationController sharedController] adjustWindowLevels];
++        }
+         if (pendingOrderOut)
+             [self doOrderOut];
+     }
+@@ -3128,11 +3270,23 @@
+     - (void) windowDidFailToExitFullScreen:(NSWindow*)window
+     {
+         exitingFullScreen = FALSE;
++        nativeFullscreenExitRequested = FALSE;
+         [self windowDidResize:nil];
+         if (pendingOrderOut)
+             [self doOrderOut];
+     }
+ 
++    /* NativeFullscreen: a game's Space keeps the Dock and menu bar hidden,
++       instead of sliding them in when the pointer reaches the screen edge,
++       as AppKit does for documents. */
++    - (NSApplicationPresentationOptions) window:(NSWindow*)window
++          willUseFullScreenPresentationOptions:(NSApplicationPresentationOptions)proposedOptions
++    {
++        if (!nativeFullscreenAuto) return proposedOptions;
++        return (proposedOptions & ~(NSApplicationPresentationAutoHideDock | NSApplicationPresentationAutoHideMenuBar)) |
++               NSApplicationPresentationHideDock | NSApplicationPresentationHideMenuBar;
++    }
++
+     - (void)windowDidMiniaturize:(NSNotification *)notification
+     {
+         macdrv_event* event;
+@@ -3250,10 +3404,16 @@
+     {
+         enteringFullScreen = TRUE;
+         nonFullscreenFrame = self.wine_fractionalFrame;
++        wineRequestedContentRect = [[self class] contentRectForFrameRect:nonFullscreenFrame
++                                                               styleMask:([self styleMask] & ~NSWindowStyleMaskFullScreen)];
+     }
+ 
+     - (void) windowWillExitFullScreen:(NSNotification*)notification
+     {
++        /* The user left the game's Space (Window menu, Globe-F): respect
++           that until the window stops covering the screen. */
++        if (nativeFullscreenAuto && !nativeFullscreenExitRequested)
++            nativeFullscreenDeclined = TRUE;
+         exitingFullScreen = TRUE;
+         [self postWindowFrameChanged:nonFullscreenFrame fullscreen:FALSE resizing:FALSE skipSizeMove:FALSE];
+     }
+diff -ru a/dlls/winemac.drv/macdrv_cocoa.h b/dlls/winemac.drv/macdrv_cocoa.h
+--- a/dlls/winemac.drv/macdrv_cocoa.h
++++ b/dlls/winemac.drv/macdrv_cocoa.h
+@@ -131,6 +131,7 @@
+ extern bool macdrv_err_on;
+ extern int topmost_float_inactive;
+ extern bool capture_displays_for_fullscreen;
++extern bool native_fullscreen;
+ /* CrossOver Hack 10912: Mac Edit menu */
+ extern int mac_edit_menu;
+ extern bool left_option_is_alt;
+diff -ru a/dlls/winemac.drv/macdrv_main.c b/dlls/winemac.drv/macdrv_main.c
+--- a/dlls/winemac.drv/macdrv_main.c
++++ b/dlls/winemac.drv/macdrv_main.c
+@@ -44,6 +44,7 @@
+ 
+ int topmost_float_inactive = TOPMOST_FLOAT_INACTIVE_NONFULLSCREEN;
+ bool capture_displays_for_fullscreen = false;
++bool native_fullscreen = false;
+ BOOL allow_vsync = TRUE;
+ BOOL allow_set_gamma = TRUE;
+ /* CrossOver Hack 10912: Mac Edit menu */
+@@ -330,6 +331,9 @@
+ 
+     if (!get_config_key(hkey, appkey, "CaptureDisplaysForFullscreen", buffer, sizeof(buffer)))
+         capture_displays_for_fullscreen = IS_OPTION_TRUE(buffer[0]);
++
++    if (!get_config_key(hkey, appkey, "NativeFullscreen", buffer, sizeof(buffer)))
++        native_fullscreen = IS_OPTION_TRUE(buffer[0]);
+ 
+     if (!get_config_key(hkey, appkey, "AllowVerticalSync", buffer, sizeof(buffer)))
+         allow_vsync = IS_OPTION_TRUE(buffer[0]);
