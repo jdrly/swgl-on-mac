@@ -77,4 +77,7 @@ jobs:
           size=$(( $(du -sk "$app" | cut -f1) / 1024 ))
           echo "app size: $size MB"
           # ~720 MB as of 0.0.2; 1.2 GB means Wine's PE debug info was not stripped.
-          [ "$size" -gt 500 ] && [ "$size" -lt 900 ] || { echo "app size $size MB is outside 500-900 MB"; exit 1; }
+          if [ "$size" -le 500 ] || [ "$size" -ge 900 ]; then
+            echo "app size $size MB is outside 500-900 MB"
+            exit 1
+          fi
