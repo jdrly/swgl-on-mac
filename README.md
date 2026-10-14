@@ -220,6 +220,10 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Fixes SWG needed:
   creates a draft GitHub release; publishing it releases the update. `IDENTITY` and
   `NOTARY_PROFILE` override the defaults; `--sign-only` stops after signing, `--no-notarize`
   skips notarization and the GitHub release (dry runs).
+- Or from GitHub Actions (`.github/workflows/release.yml`): pushing a tag `v<version>` builds,
+  signs and notarizes the app and creates the draft release with the DMG. Then
+  `scripts/release.sh --feed <version>`, on the Mac with the EdDSA key, adds `appcast.xml` and
+  the deltas to the draft. A manual run of the workflow does the same build without a release.
 
 `prebuilt/` holds the outputs of the three scripts, so `build.sh` works from a fresh clone.
 
