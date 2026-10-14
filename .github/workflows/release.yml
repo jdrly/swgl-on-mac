@@ -40,6 +40,7 @@ jobs:
 
       - name: Check the version
         run: |
+          # shellcheck disable=SC2016 # ${SWGL_VERSION:-…} is text for sed to match
           version="$(sed -n 's/^APP_VERSION=\${SWGL_VERSION:-\(.*\)}$/\1/p' build.sh)"
           echo "build.sh version: $version"
           if [ "$DRY_RUN" = false ]; then
@@ -75,7 +76,9 @@ jobs:
           security unlock-keychain -p "$kc_password" "$kc"
           security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$P12_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "$kc_password" "$kc" >/dev/null
-          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          keychains=()
+          while IFS= read -r k; do keychains+=("$k"); done < <(security list-keychains -d user | sed 's/^ *"//; s/"$//')
+          security list-keychains -d user -s "$kc" "${keychains[@]}"
           rm -f "$RUNNER_TEMP/cert.p12"
           security find-identity -v -p codesigning "$kc"
 

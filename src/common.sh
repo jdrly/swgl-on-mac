@@ -77,7 +77,8 @@ swgl_wine_env() {
   export DXVK_CONFIG_FILE="$RES/d9mt.conf"
   export D9MT_AIR_CACHE="$CACHES/d9mt/air-cache.sqlite3"
   export D9MT_PSO_ARCHIVE_DIR="$CACHES/d9mt/pso"
-  export D9MT_DEBUG_FILE="Z:$(printf '%s' "$HOME" | tr / '\\')\\Library\\Logs\\SWGLonMac\\d9mt-debug.txt"
+  D9MT_DEBUG_FILE="Z:$(printf '%s' "$HOME" | tr / '\\')\\Library\\Logs\\SWGLonMac\\d9mt-debug.txt"
+  export D9MT_DEBUG_FILE
   if [ "$X87" = off ]; then
     export ROSETTA_X87_PATH=""
   else
@@ -236,6 +237,7 @@ enable_game_mode() {
   export WINEDLLPATH="$WINE_HOME/lib/wine"
   m="$(stat -f %Fm "$lib/wine")" || return 0
   dir="$(getconf DARWIN_USER_TEMP_DIR)winetemp-$(stat -f '%i-%z' "$lib/wine")-${m%.*}-$((10#${m#*.}))"
+  # shellcheck disable=SC2174 # only winetemp-… is new; its parent is the user temp dir
   mkdir -p -m 700 "$dir" && ln -sfn "$gm/MacOS/$exe" "$dir/wine"
 }
 

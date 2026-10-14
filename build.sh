@@ -31,7 +31,8 @@ APP="$ROOT/dist/SWGL on Mac.app"
 
 fetch() { # url sha256 -> prints path of the verified download
   local url=$1 sha=$2 dir="$CACHE/$2"
-  local file="$dir/$(basename "$url")"
+  local file
+  file="$dir/$(basename "$url")"
   if [ ! -f "$file" ]; then
     mkdir -p "$dir"
     echo "Downloading $url" >&2

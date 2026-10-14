@@ -224,7 +224,8 @@ echo "[release] building the update feed"
 mkdir -p "$UPDATES"
 rm -f "$UPDATES/${DMG##*/}"
 cp -c "$DMG" "$UPDATES/"
-kept=($(ls "$UPDATES" | sed -n 's/^SWGL-on-Mac-\(.*\)\.dmg$/\1/p' | sort -V))
+kept=()
+while IFS= read -r v; do kept+=("$v"); done < <(ls "$UPDATES" | sed -n 's/^SWGL-on-Mac-\(.*\)\.dmg$/\1/p' | sort -V)
 for ((i = 0; i < ${#kept[@]} - 6; i++)); do rm -f "$UPDATES/SWGL-on-Mac-${kept[i]}.dmg"; done
 feed="$OUT/feed"
 rm -rf "$feed"
