@@ -24,7 +24,34 @@ option_held() {
   [ "$(osascript -l JavaScript -e 'ObjC.import("AppKit"); ($.NSEvent.modifierFlags & 0x80000) ? "1" : "0"' 2>/dev/null)" = 1 ]
 }
 
+ensure_rosetta() {
+  # Wine is x86_64, so it needs Rosetta, which macOS 27 drops on an upgrade. Install it
+  # (softwareupdate needs no admin rights for it; the welcome window says that this accepts
+  # Apple's licence). If that fails, open the Intel-only helper: macOS then offers the
+  # installation in its own dialog, which a script running Wine never gets.
+  swgl_x86_ok && return 0
+  echo "x86 translation does not work on macOS $(sw_vers -productVersion); installing Rosetta"
+  [ "${1:-}" = --prepare ] || swgl_notify "Installing Rosetta for the game, this takes a minute…"
+  /usr/sbin/softwareupdate --install-rosetta --agree-to-license 2>&1 | tr '\r' '\n' | grep -v '^Installing: ' | sed 's/^/  softwareupdate: /'
+  swgl_x86_ok && { echo "Rosetta installed"; return 0; }
+  echo "Still no x86 translation; asking macOS to install Rosetta"
+  open -W "$APP_BUNDLE/Contents/Helpers/SWGL on Mac Rosetta Check.app" 2>&1 | sed 's/^/  open: /'
+  for _ in $(seq 10); do
+    swgl_x86_ok && { echo "Rosetta installed"; return 0; }
+    sleep 1
+  done
+  echo "Rosetta is not available; giving up"
+  if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 28 ]; then
+    # Apple: from macOS 28, Rosetta remains only for certain older games (#20).
+    swgl_alert "SWGL on Mac doesn't run on this version of macOS yet. A version for macOS 28 is in the works."
+  else
+    swgl_alert "SWGL on Mac couldn't install Rosetta, which it needs to run the game. Check your internet connection, then open SWGL on Mac again."
+  fi
+  return 1
+}
+
 ensure_prefix() {
+  ensure_rosetta "${1:-}" || exit 1
   local stamp="$PREFIX/.swgl-wine-version" want
   want="$(head -1 "$RES/VERSIONS")"
   if [ ! -f "$PREFIX/system.reg" ] || [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then

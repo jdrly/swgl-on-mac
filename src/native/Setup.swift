@@ -196,7 +196,9 @@ struct WelcomeView: View {
             .font(.title.weight(.semibold))
           Text("To get started, SWGL on Mac downloads the official SWG Legends launcher from "
                + "swglegends.com and prepares everything it needs. The launcher then installs "
-               + "the game and keeps it up to date.")
+               + "the game and keeps it up to date. If your Mac doesn't have Rosetta yet, "
+               + "Apple's translation for Intel apps, it installs that too, which accepts "
+               + "Apple's Rosetta licence.")
             .multilineTextAlignment(.center)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

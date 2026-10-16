@@ -249,6 +249,12 @@ swgl_versions() {  # "wine cx-26.3.0-8 jre … d9mt d0629b7 app 0.0.1"
   tr -s '\n ' '  ' <"$RES/VERSIONS" | sed 's/ $//'
 }
 
+# Whether this Mac runs x86_64 code, i.e. Wine (Rosetta installed and supported). For tests,
+# SWGL_TEST_NO_ROSETTA=1 makes it fail.
+swgl_x86_ok() {
+  [ -z "${SWGL_TEST_NO_ROSETTA:-}" ] && /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null
+}
+
 swgl_system_info() {  # the Mac, power and settings, one line each (sysctl and pmset are fast)
   local mode
   echo "Mac: $(sysctl -n hw.model), $(sysctl -n machdep.cpu.brand_string)" \
@@ -258,7 +264,8 @@ swgl_system_info() {  # the Mac, power and settings, one line each (sysctl and p
     $1 == "lowpowermode" && $2 == 1 { print "Low Power Mode" }
     $1 == "powermode" { print ($2 == 1 ? "Low Power Mode" : $2 == 2 ? "High Power Mode" : "power mode automatic") }' | head -1)"
   echo "Power: $(pmset -g ps 2>/dev/null | sed -n "1s/.*'\(.*\)'.*/\1/p")${mode:+, $mode};" \
-    "Rosetta $([ -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ] && echo installed || echo "not installed")"
+    "Rosetta $([ -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ] && echo installed || echo "not installed")," \
+    "x86 translation $(swgl_x86_ok && echo works || echo fails)"
   echo "Settings: $(swgl_settings | tr '\n' ' ')"
 }
 

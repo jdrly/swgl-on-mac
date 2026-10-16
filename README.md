@@ -18,15 +18,20 @@ client runs in a bundled Wine (CrossOver 26.3 based, WoW64, with x87 acceleratio
 
 ## Install
 
-**Requirements:** a Mac with Apple Silicon, macOS 26 or later (developed on macOS 27), an
-internet connection, and about 10 GB of free space for the game.
+**Requirements:** a Mac with Apple Silicon, macOS 26 or 27 (developed on macOS 27), Rosetta,
+an internet connection, and about 10 GB of free space for the game. The game runs in an Intel
+(x86_64) Wine, so it depends on Rosetta, which Apple keeps only for certain older games from
+macOS 28 on. A version for macOS 28 is planned
+([#20](https://github.com/jdrly/swgl-on-mac/issues/20)); until it is announced, don't upgrade
+a Mac you play on to macOS 28.
 
 1. Download `SWGL-on-Mac-<version>.dmg` from
    [Releases](https://github.com/jdrly/swgl-on-mac/releases), open it and drag
    **SWGL on Mac** into Applications.
 2. Open SWGL on Mac. On first start a welcome window downloads the official SWG Legends
    launcher from swglegends.com and prepares everything (about a minute). If Rosetta is not
-   installed yet, macOS offers to install it when the game first starts.
+   installed (updating to macOS 27 removes it), SWGL on Mac installs it, which accepts
+   Apple's Rosetta licence.
 3. Log in to the launcher. It installs the game and keeps it up to date, as on Windows.
 
 The app is signed and notarized by Apple. It checks for updates once a day and offers new
@@ -76,7 +81,7 @@ serial numbers are left out or replaced. Turn on **Settings → Debug Mode** onl
 it makes the logs much more detailed for the next game start, but costs some performance and
 disk space, so turn it off again afterwards.
 
-## Known limitations (0.0.3, early beta)
+## Known limitations (0.0.4, early beta)
 
 - **Short hitches when entering new areas.** The game loads new content on its main thread,
   and on a Mac that code runs translated (Rosetta). Profiling shows the time is the game's own
