@@ -38,7 +38,8 @@ for p in patches/winemac-swg.patch patches/winemac-input.patch; do
 done
 
 export MACOSX_DEPLOYMENT_TARGET=26.0
-export PATH="$(brew --prefix bison)/bin:$PATH:$W/mingw/bin"
+PATH="$(brew --prefix bison)/bin:$PATH:$W/mingw/bin"
+export PATH
 without="--without-freetype --without-gnutls --without-sdl --without-unwind --without-opencl --without-alsa
   --without-capi --without-cups --without-dbus --without-ffmpeg --without-fontconfig --without-gettext
   --without-gphoto --without-gssapi --without-gstreamer --without-hwloc --without-inotify --without-krb5

@@ -1,0 +1,83 @@
+# Checks every pull request and every push to main: the scripts and workflows lint clean, and
+# the app builds. No secrets and read-only access; signing and notarizing happen only in
+# release.yml.
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: shellcheck
+        run: git ls-files -z '*.sh' | xargs -0 shellcheck -S warning
+
+      - name: actionlint
+        run: |
+          v=1.7.12
+          sha=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          curl -fsSL -o "$RUNNER_TEMP/actionlint.tgz" \
+            "https://github.com/rhysd/actionlint/releases/download/v$v/actionlint_${v}_linux_amd64.tar.gz"
+          echo "$sha  $RUNNER_TEMP/actionlint.tgz" | sha256sum -c --quiet
+          tar -xzf "$RUNNER_TEMP/actionlint.tgz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cache downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache
+          key: downloads-${{ hashFiles('build.sh') }}
+
+      # build.sh strips Wine's Windows modules with Homebrew mingw-w64 and skips that quietly
+      # without it, so require it (the size check below catches a skipped strip too).
+      - name: Install build tools
+        run: |
+          brew install --quiet mingw-w64
+          test -x /opt/homebrew/bin/x86_64-w64-mingw32-strip
+          test -x /opt/homebrew/bin/i686-w64-mingw32-strip
+
+      # The scripts run under macOS's /bin/bash 3.2, so check their syntax with that one.
+      - name: Syntax (bash 3.2)
+        run: git ls-files -z '*.sh' | xargs -0 -n 1 /bin/bash -n
+
+      - name: Build
+        run: ./build.sh
+
+      - name: Check the app
+        run: |
+          app="dist/SWGL on Mac.app"
+          find "$app" -name Info.plist -print0 | xargs -0 plutil -lint -s
+          for f in Contents/MacOS/SWGLonMac Contents/Resources/main.sh Contents/Resources/wine/bin/wine \
+                   Contents/Resources/jre/Contents/Home/bin/java "Contents/Frameworks/Sparkle.framework"; do
+            [ -e "$app/$f" ] || { echo "missing: $f"; exit 1; }
+          done
+          size=$(( $(du -sk "$app" | cut -f1) / 1024 ))
+          echo "app size: $size MB"
+          # ~720 MB as of 0.0.2; 1.2 GB means Wine's PE debug info was not stripped.
+          if [ "$size" -le 500 ] || [ "$size" -ge 900 ]; then
+            echo "app size $size MB is outside 500-900 MB"
+            exit 1
+          fi

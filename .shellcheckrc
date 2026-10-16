@@ -1,0 +1,6 @@
+# Every script here is bash, including src/common.sh, which has no shebang because the others
+# source it.
+shell=bash
+# Variables set in a sourced file (src/common.sh, settings.conf) are used by the scripts that
+# source it, and those sources are built from run-time paths.
+disable=SC2034,SC1090
