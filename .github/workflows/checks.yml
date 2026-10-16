@@ -81,3 +81,27 @@ jobs:
             echo "app size $size MB is outside 500-900 MB"
             exit 1
           fi
+
+      # The README promises macOS 26; a binary built for the SDK's version would not run there,
+      # and the drivers need Compat metallibs for it (#25).
+      - name: Check the minimum macOS (26.0)
+        run: |
+          app="dist/SWGL on Mac.app"
+          bad=0 n=0
+          while IFS= read -r -d '' f; do
+            file -b "$f" | grep -q '^Mach-O' || continue
+            m="$(vtool -show-build "$f" 2>/dev/null | awk '/minos/ { print $2; exit }')"
+            [ -n "$m" ] || continue
+            n=$((n + 1))
+            if [ "$(printf '%s\n26.0\n' "$m" | sort -V | tail -1)" != 26.0 ] && [ "$m" != 26.0 ]; then
+              echo "needs macOS $m: ${f#"$app"/}"
+              bad=1
+            fi
+          done < <(find "$app" -type f -print0)
+          echo "$n Mach-O files checked"
+          for dll in d3d9.dll d3d9-x64.dll; do
+            compat=$(strings -a "prebuilt/d9mt/$dll" | grep -c 'air64[_a-z0-9]*-apple-macosx26\.0\.0' || true)
+            echo "$dll: $compat Compat metallib targets"
+            [ "$compat" -gt 0 ] || bad=1
+          done
+          exit "$bad"
