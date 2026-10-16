@@ -22,7 +22,7 @@ SPARKLE_URL=https://github.com/sparkle-project/Sparkle/releases/download/$SPARKL
 SPARKLE_SHA256=c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
 
 # SWGL_VERSION overrides the version for test builds (e.g. two versions to test updates with).
-APP_VERSION=${SWGL_VERSION:-0.0.3}
+APP_VERSION=${SWGL_VERSION:-0.0.4}
 APP_AUTHOR="Jan Drlý / Pharaphobia"
 GITHUB_URL=https://github.com/jdrly
 REPO_URL=https://github.com/jdrly/swgl-on-mac
@@ -129,6 +129,10 @@ swiftc -parse-as-library -O -target arm64-apple-macos26.0 -o "$H/MacOS/SWGLonMac
 HS="$APP/Contents/Helpers/SWGL on Mac Settings.app/Contents"
 mkdir -p "$HS/MacOS" "$HS/Resources"
 swiftc -parse-as-library -O -target arm64-apple-macos26.0 -o "$HS/MacOS/SWGLonMacSettings" src/native/Settings.swift
+# Rosetta check, Intel only: opening it makes macOS offer to install Rosetta (ensure_rosetta).
+HR="$APP/Contents/Helpers/SWGL on Mac Rosetta Check.app/Contents"
+mkdir -p "$HR/MacOS" "$HR/Resources"
+clang -arch x86_64 -mmacosx-version-min=26.0 -O2 -Wall -o "$HR/MacOS/SWGLonMacRosettaCheck" src/native/rosetta-check.c
 printf 'version=%s\nauthor=%s\ngithub=%s\nrepo=%s\n' "$APP_VERSION" "$APP_AUTHOR" "$GITHUB_URL" "$REPO_URL" >"$R/app.properties"
 chmod -R u+w "$R/jre" "$R/wine"
 # Drop the Wine SDK (headers, compilers, import libs, conformance tests); the runtime needs none of it.
@@ -242,6 +246,7 @@ EOF
 helper_plist "$H" SWGLonMacSetup setup
 # An accessory app: no Dock icon, and the launcher's menus stay in the menu bar.
 helper_plist "$HS" SWGLonMacSettings settings $'\n\t<key>LSUIElement</key><true/>'
+helper_plist "$HR" SWGLonMacRosettaCheck rosetta-check $'\n\t<key>LSUIElement</key><true/>'
 
 xattr -cr "$APP"
 # Sparkle without its XPC services no longer matches its own signature (release.sh signs it
