@@ -1,6 +1,7 @@
 // SWGLonMacSettings: the Settings window (SwiftUI, Liquid Glass), opened from the launcher's
 // SWGL on Mac → Settings… (⌘,). Reads and writes settings.conf through the app's
-// Resources/settings.sh, like the maintenance menu.
+// Resources/settings.sh, like the maintenance menu. Laid out like SWTOR on Mac's Settings: a
+// sidebar of panes (SettingsPane), the selected one's settings next to it, the same size.
 //
 //   SWGLonMacSettings [launcher pid]
 //
@@ -32,6 +33,12 @@ final class Settings {
       .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
     script = resources.appendingPathComponent("settings.sh")
     values = Settings.parse(Settings.run(script, []))
+  }
+
+  // settings.conf as it is now (the maintenance menu may have changed it).
+  func reload() {
+    let fresh = Settings.parse(Settings.run(script, []))
+    if !fresh.isEmpty, pendingSpeed == nil { values = fresh }
   }
 
   func toggle(_ key: String) -> Binding<Bool> {
@@ -118,35 +125,117 @@ final class Settings {
 
 // MARK: - Views
 
+// The panes of the Settings window, in sidebar order (as in SWTOR on Mac). A new pane is a
+// case here, its title and symbol, whether the game reads it, and its sections in
+// SettingsView.sections(for:).
+enum SettingsPane: String, CaseIterable, Identifiable {
+  case graphics, game, mouse, updates, troubleshooting
+
+  var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .graphics: "Graphics"
+    case .game: "Game"
+    case .mouse: "Mouse"
+    case .updates: "Updates"
+    case .troubleshooting: "Troubleshooting"
+    }
+  }
+
+  var symbol: String {
+    switch self {
+    case .graphics: "sparkles.tv"
+    case .game: "gamecontroller"
+    case .mouse: "computermouse"
+    case .updates: "arrow.down.circle"
+    case .troubleshooting: "stethoscope"
+    }
+  }
+
+  // settings.conf settings the game reads when it starts (not Updates, which Sparkle follows
+  // at once)
+  var appliesAtNextGameStart: Bool { self != .updates }
+}
+
 struct SettingsView: View {
   @Bindable var settings: Settings
+  // the pane shown last time
+  @AppStorage("settingsPane") private var selectedPane: SettingsPane = .graphics
+  // the sidebar has the keyboard focus when the window opens: ↑ ↓ switch panes
+  @FocusState private var sidebarFocused: Bool
 
   var body: some View {
-    Form {
-      Section("Graphics") {
+    NavigationSplitView {
+      List(SettingsPane.allCases, selection: Binding(get: { selectedPane }, set: { if let p = $0 { selectedPane = p } })) { pane in
+        Label(pane.title, systemImage: pane.symbol)
+      }
+      .accessibilityLabel("Settings sections")
+      .focused($sidebarFocused)
+      .toolbar(removing: .sidebarToggle)
+      .navigationSplitViewColumnWidth(min: 180, ideal: 190, max: 260)
+    } detail: {
+      Form {
+        sections(for: selectedPane)
+        if selectedPane.appliesAtNextGameStart {
+          Section {
+          } footer: {
+            Label("Changes take effect the next time the game starts.", systemImage: "info.circle")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+        }
+      }
+      .formStyle(.grouped)
+      .navigationTitle(selectedPane.title)
+    }
+    .frame(minWidth: 640, minHeight: 400)
+    .onAppear {
+      settings.reload()
+      sidebarFocused = true
+    }
+    // The window is an AppKit one (see AppDelegate), which doesn't take navigationTitle from
+    // inside a NavigationSplitView: its title is set here.
+    .onChange(of: selectedPane, initial: true) { _, pane in
+      SettingsWindow.current?.title = pane.title
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      settings.reload()
+    }
+  }
+
+  @ViewBuilder private func sections(for pane: SettingsPane) -> some View {
+    switch pane {
+    case .graphics:
+      Section {
         Toggle(isOn: settings.toggle("RETINA")) {
           Text("Retina Mode")
           Text("Renders the game at your display's full resolution. Sharper, at some cost in frame rate.")
         }
-        Toggle(isOn: settings.toggle("FPS_HUD")) {
-          Text("Show Metal HUD")
-          Text("Apple's overlay with the frame rate and GPU details, over the game.")
-        }
       }
 
-      Section("Game") {
+    case .game:
+      Section {
         Toggle(isOn: settings.toggle("GAME_MODE")) {
           Text("Game Mode")
           Text("While the game is in full screen, macOS gives it priority on the CPU and GPU and "
                + "lowers the latency of Bluetooth controllers and headphones.")
         }
+        Toggle(isOn: settings.toggle("FPS_HUD")) {
+          Text("Show Metal HUD")
+          Text("Apple's overlay with the frame rate and GPU details, over the game. Shift-F9 hides "
+               + "or shows it while you play, Shift-F10 switches its layout.")
+        }
       }
 
-      Section("Mouse") {
+    case .mouse:
+      Section {
         MouseSpeedRow(settings: settings)
       }
 
-      Section("Updates") {
+    case .updates:
+      Section {
         Toggle(isOn: $settings.automaticUpdateChecks) {
           Text("Check for updates automatically")
           Text("Looks for a new version of SWGL on Mac once a day, never while the game is "
@@ -154,7 +243,8 @@ struct SettingsView: View {
         }
       }
 
-      Section("Troubleshooting") {
+    case .troubleshooting:
+      Section {
         Toggle(isOn: settings.toggle("DEBUG")) {
           Text("Debug Mode")
           Text("Much more detailed logs for bug reports, at some cost in performance. Turn it on "
@@ -162,16 +252,12 @@ struct SettingsView: View {
         }
       }
     }
-    .formStyle(.grouped)
-    .safeAreaInset(edge: .bottom, spacing: 0) {
-      Text("Changes apply the next time the game starts.")
-        .font(.callout)
-        .foregroundStyle(.red)
-        .padding(.bottom, 18)
-    }
-    .frame(width: 520)
-    .fixedSize(horizontal: false, vertical: true)
   }
+}
+
+// The Settings window, for its title (SettingsView).
+@MainActor enum SettingsWindow {
+  static weak var current: NSWindow?
 }
 
 struct MouseSpeedRow: View {
@@ -251,17 +337,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   private func showWindow() {
     if window == nil {
+      // SWTOR on Mac's Settings size (760 × 520, at least 640 × 400), resizable; the sidebar
+      // runs the full height under the title bar. The title is the selected pane's name
+      // (SettingsView), under it a separator line, as in SWTOR on Mac.
       let hosting = NSHostingController(rootView: SettingsView(settings: settings))
-      hosting.sizingOptions = [.preferredContentSize]
+      hosting.sizingOptions = [.minSize]
       let window = NSWindow(contentViewController: hosting)
-      window.styleMask = [.titled, .closable]
-      window.title = "SWGL on Mac Settings"
+      window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+      window.toolbarStyle = .unified
+      window.titlebarSeparatorStyle = .line
+      SettingsWindow.current = window
+      window.title = (UserDefaults.standard.string(forKey: "settingsPane").flatMap(SettingsPane.init(rawValue:)) ?? .graphics).title
       window.isReleasedWhenClosed = false
-      // Center at the content's real size; centred while still empty, the window would grow
-      // from there and end up low on the screen.
-      hosting.view.layoutSubtreeIfNeeded()
-      window.setContentSize(hosting.view.fittingSize)
+      window.setContentSize(NSSize(width: 760, height: 520))
       window.center()
+      window.setFrameAutosaveName("SWGLonMacSettings")
       self.window = window
     }
     NSApp.activate()
