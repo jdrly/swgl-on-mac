@@ -22,7 +22,7 @@ go in inline code, e.g. d9mt `68c7190`.
 Only when the player has to do something after the update.
 
 ### Support
-SWGL on Mac is an unofficial project, not made, endorsed or supported by the SWG Legends team. Please send questions and bug reports to Pharaphobia on Discord or as a [GitHub issue](https://github.com/jdrly/swgl-on-mac/issues), never to the SWG Legends team.
+SWGL on Mac is an unofficial project, not made, endorsed or supported by the SWG Legends team. Please send questions and bug reports to Pharaphobia on [Discord](https://discord.gg/AnV3fZWz2b) or as a [GitHub issue](https://github.com/jdrly/swgl-on-mac/issues), never to the SWG Legends team.
 ```
 
 | Part | Required | On swonmac.com |
@@ -37,4 +37,6 @@ SWGL on Mac is an unofficial project, not made, endorsed or supported by the SWG
   as a change and nothing deeper.
 - Inline code (`` `68c7190` ``) shows as a chip on the site. No code blocks: the update window
   doesn't format them.
-- The Release workflow stops when the title or the summary is missing.
+- Support links both [Discord](https://discord.gg/AnV3fZWz2b) and the GitHub issues: not everybody
+  who plays has a GitHub account.
+- The Release workflow stops when the title, the summary or the Discord invite is missing.
