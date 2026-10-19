@@ -107,6 +107,11 @@ swgl_debug_env() {
   export D9MT_PROFILE="${D9MT_PROFILE:-1}" D9MT_HITCH_MS="${D9MT_HITCH_MS:-50}" D9MT_MEMSTATS="${D9MT_MEMSTATS:-1}"
 }
 
+# Every Wine call, here and in the shims: the first one of a session starts Wine's system
+# processes (services.exe, winedevice.exe, …), which keep its stderr open (stdin and stdout are
+# /dev/null) until the session ends, ~3 s after the last Wine program (wineserver's default; no
+# -p, which would keep it forever). So a Wine call's stderr is never a pipe something reads to
+# the end ($(…) 2>&1, a launcher's pipe): that read would wait for the session, not the program.
 wine_cmd() {
   ( swgl_wine_env; "$WINE_HOME/bin/wine" "$@" )
 }
