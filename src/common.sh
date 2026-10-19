@@ -10,6 +10,7 @@ PREFIX="$SUPPORT/Prefix"
 SETTINGS="$SUPPORT/settings.conf"
 LOGS="$HOME/Library/Logs/SWGLonMac"
 CACHES="$HOME/Library/Caches/SWGLonMac"
+DIAG_REPORTS="$HOME/Library/Logs/DiagnosticReports"
 
 # Builds before the rename kept everything in "SWGLegends" folders: move them over once.
 for dir in "Application Support" Logs Caches; do
@@ -295,16 +296,21 @@ swgl_displays() {  # one "Display:" line per screen; system_profiler takes a mom
     END { out() }'
 }
 
-# Crash reports macOS wrote for this app's processes, newest first (find tests narrow them
-# down, e.g. -newer FILE or -mtime -7): the game, and Wine, Java and Metal's shader compiler
-# when they ran for SWGL on Mac (other apps' reports stay out).
+# Reports macOS wrote for this app's processes (crashes .ips and .crash, hangs .hang, spins
+# .spin, .diag), newest first (find tests narrow them down, e.g. -newer FILE or -mtime -7): the
+# game (SwgClient_r.exe and SwgClient_Latest-x64.exe, also run from the Game Mode bundle, whose
+# reports take the client's name), this app's executables (SWGLonMac, SWGLonMacSetup,
+# SWGLonMacSettings, SWGLonMacRosettaCheck; "SWGL on Mac" by bundle name), Wine (wine,
+# wine64-preloader, wineserver) and Java (the official launcher) when they ran for SWGL on Mac,
+# and Metal's shader compiler when it worked for the game or Wine (other apps' reports stay out).
 swgl_crash_reports() {
   local f
-  find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f \( -name 'SwgClient*' -o -name '*wine*' \
-    -o -name '*java*' -o -name 'SWGLonMac*' -o -name 'MTLCompilerService*' \) "$@" -print0 2>/dev/null |
-    xargs -0 ls -t 2>/dev/null | while IFS= read -r f; do
+  find "$DIAG_REPORTS" -maxdepth 1 -type f \( -name 'SwgClient*' -o -name 'SWGLonMac*' -o -name 'SWGL on Mac*' \
+    -o -name '*wine*' -o -name '*java*' -o -name 'MTLCompilerService*' \) \
+    \( -name '*.ips' -o -name '*.crash' -o -name '*.hang' -o -name '*.spin' -o -name '*.diag' \) "$@" \
+    -exec stat -f '%m %N' {} + 2>/dev/null | sort -rn | while read -r _ f; do
       case "${f##*/}" in
-        SwgClient*) ;;
+        SwgClient*|SWGLonMac*|"SWGL on Mac"*) ;;
         MTLCompilerService*) LC_ALL=C grep -q -E '"responsibleProc" : "(SwgClient|wine)' "$f" || continue ;;
         *) LC_ALL=C grep -q -i -E 'swglonmac|SWGL on Mac' "$f" || continue ;;
       esac

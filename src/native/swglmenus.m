@@ -162,7 +162,9 @@
                 alert.messageText = @"Logs collected";
                 alert.informativeText = [NSString stringWithFormat:
                     @"%@ is in your %@ folder. Send it with a short description of the problem to "
-                     "Pharaphobia on Discord or attach it to a GitHub issue, not to the SWG Legends team.",
+                     "Pharaphobia on Discord or attach it to a GitHub issue, not to the SWG Legends team. "
+                     "It includes the crash reports of the game, Wine and SWGL on Mac from the last 7 days, "
+                     "so you don't need to look for them.",
                     zip.lastPathComponent, folder];
                 [alert addButtonWithTitle:@"Show in Finder"];
             } else {

@@ -7,9 +7,12 @@
 #
 # In the zip: app.log, launcher.log and wine.log (their last few MB, continuing into the
 # .old file when short), d9mt's debug flags and log, settings.conf, VERSIONS, a fresh
-# system-info.txt, this app's crash reports of the last 7 days, and the game's options.cfg
-# and custom.cfg. Never legends.cfg or launchersettings.ini (the account password), nor
-# anything from the Wine prefix but its two stamp files' contents (system-info.txt).
+# system-info.txt (which crash reports are in the zip, and which were left out), the game's
+# options.cfg and custom.cfg, and crash-reports/: macOS's crash, hang and spin reports of the
+# last 7 days for the game, Wine, the official launcher and this app (see crash_reports), so
+# nobody has to look for them. Never legends.cfg or launchersettings.ini (the account
+# password), nor anything from the Wine prefix but its two stamp files' contents
+# (system-info.txt).
 # Every file is redacted on the way in: home folder → ~, user and full name → USER and NAME,
 # account names → ACCOUNT, e-mail addresses → EMAIL, password/user name/ID settings dropped
 # or REDACTED, and serial numbers and device identifiers left out.
@@ -105,6 +108,26 @@ add_log() {  # log max-bytes: the end of the log, continuing into its .old file 
   fi
 }
 
+# Crash reports: swgl_crash_reports (common.sh) of the last 7 days, the newest first, at most
+# CRASH_MAX of them, CRASH_MAX_BYTES together and CRASH_FILE_MAX each (larger ones are left
+# out, and named in system-info.txt). Prints "add <path>" or "skip <name> (<why>)" per report.
+CRASH_MAX=20
+CRASH_MAX_BYTES=10000000
+CRASH_FILE_MAX=3000000
+crash_reports() {
+  local f size n=0 total=0
+  swgl_crash_reports -mtime -7 | while IFS= read -r f; do
+    size=$(stat -f %z "$f") || continue
+    if [ "$n" -ge "$CRASH_MAX" ]; then echo "skip ${f##*/} (more than $CRASH_MAX reports)"
+    elif [ "$size" -gt "$CRASH_FILE_MAX" ]; then echo "skip ${f##*/} ($(((size + 999) / 1000)) KB, too large)"
+    elif [ $((total + size)) -gt "$CRASH_MAX_BYTES" ]; then echo "skip ${f##*/} (over $((CRASH_MAX_BYTES / 1000000)) MB together)"
+    else
+      echo "add $f"
+      n=$((n + 1)); total=$((total + size))
+    fi
+  done
+}
+
 add_log app.log 5000000
 add_log launcher.log 5000000
 add_log wine.log 20000000
@@ -114,9 +137,15 @@ add "$SETTINGS"
 add "$RES/VERSIONS"
 add "$GAME/options.cfg" game/options.cfg
 add "$GAME/custom.cfg" game/custom.cfg
-swgl_crash_reports -mtime -7 | head -10 | while IFS= read -r f; do
-  add "$f" "crash-reports/${f##*/}"
-done
+# (redacted like every other file; the list goes into system-info.txt)
+crash_reports >"$work/crash-list"
+while IFS= read -r line; do
+  case "$line" in
+    "add "*) f=${line#add }; add "$f" "crash-reports/${f##*/}" &&
+      echo "  ${f##*/} ($(stat -f '%Sm' -t '%F %R' "$f"), $((($(stat -f %z "$f") + 999) / 1000)) KB)" ;;
+    "skip "*) echo "  left out: ${line#skip }" ;;
+  esac
+done <"$work/crash-list" >"$work/crash-index"
 
 {
   echo "SWGL on Mac logs, collected $(date '+%F %T %z')"
@@ -138,6 +167,9 @@ done
   find "$GAME/mods" -mindepth 1 -maxdepth 2 -exec stat -f '  %Sm  %12z  %N' {} + 2>/dev/null | sed "s|$GAME/mods/||"
   echo "Game crash dumps of the last 7 days (not included):"
   find "$GAME" -maxdepth 1 -name '*.mdmp' -mtime -7 -exec stat -f '  %Sm  %12z  %N' {} + 2>/dev/null | sed "s|$GAME/||"
+  echo
+  echo "Crash reports of the last 7 days (newest first; in crash-reports/):"
+  if [ -s "$work/crash-index" ]; then cat "$work/crash-index"; else echo "  none"; fi
   echo
   echo "Running processes:"
   ps -ax -o pid,etime,rss,command 2>/dev/null | awk 'NR == 1 || /wine|SwgClient|SWGL on Mac|SWGLonMac/' | grep -v -E 'awk|collect-logs'

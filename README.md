@@ -76,7 +76,10 @@ Version 0.0.1 has no updater; install the next version once by hand from
    Please don't send it to the SWG Legends team: they don't support SWGL on Mac.
 
 The zip holds the app's logs, settings, system details (Mac model, macOS, displays) and
-recent crash reports. Your account password, account name, e-mail address, user name and
+macOS's crash, hang and spin reports of the last 7 days (from `~/Library/Logs/DiagnosticReports`)
+for the game, Wine, the official launcher and SWGL on Mac, so you don't have to look for them:
+the newest 20, up to 10 MB together; `system-info.txt` lists which are in the zip and which were
+left out. Your account password, account name, e-mail address, user name and
 serial numbers are left out or replaced. Turn on **Settings → Debug Mode** only when asked:
 it makes the logs much more detailed for the next game start, but costs some performance and
 disk space, so turn it off again afterwards.
