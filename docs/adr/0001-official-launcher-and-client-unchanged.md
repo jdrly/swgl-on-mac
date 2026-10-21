@@ -20,7 +20,12 @@ notice; `notes/rosetta-sunset-plan.md`, *Constraint*).
 - The app doesn't ship the launcher. The welcome window downloads it from SWG Legends' own URL
   on first run, and the launcher installs and updates the game itself, as on Windows (README,
   *First run*).
-- SWGL on Mac never modifies or redistributes SWG Legends' files (`notes/rosetta-sunset-plan.md`).
+- SWGL on Mac never modifies or redistributes SWG Legends' programs and game assets
+  (`notes/rosetta-sunset-plan.md`). The only files it writes in the game folder are the game's
+  settings: `options.cfg` (the saved resolution and UI scale, scaled to the Retina setting) and
+  `legends.cfg` (the saved password, encrypted with DPAPI so the game can read it)
+  (`src/common.sh`; README, *Saved password*). The launcher is unpacked without its Windows Java
+  runtime, which runs natively on Zulu 8 instead (README, *First run*).
 - Players send support questions to Pharaphobia, never to the SWG Legends team (README notice).
 
 ## Consequences

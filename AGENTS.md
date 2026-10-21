@@ -9,7 +9,8 @@ The documentation is the source of truth and should answer scope and design ques
 research, not specifications. Look the answer up there before asking or choosing an approach of
 your own.
 
-- SWG Legends' launcher and game files are never changed, shipped or committed (ADR-0001), and
+- SWG Legends' programs and game assets are never changed, shipped or committed; the app writes
+  only the game's settings (`options.cfg`, `legends.cfg`) (ADR-0001), and
   nothing from a player's account goes into the repository, an issue or a pull request.
 - The scripts run under macOS's `/bin/bash` 3.2: no bash 4 features.
 - Never start the game or a Wine window on the maintainer's screen while they may be playing.

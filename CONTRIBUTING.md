@@ -118,7 +118,8 @@ A change is done only when all of these hold:
 - [ ] No log or Collect Logs file gains the password, account name, e-mail address, user name or
       serial numbers; `legends.cfg` and `launchersettings.ini` are never collected
       (`src/collect-logs.sh`).
-- [ ] SWG Legends' launcher and game files stay unchanged and are never shipped (ADR-0001).
+- [ ] SWG Legends' programs and game assets stay unchanged and are never shipped; the only
+      game files the app writes are the settings in `options.cfg` and `legends.cfg` (ADR-0001).
 - [ ] A new d9mt pin is a d9mt commit that met d9mt's Definition of Done (hash suite equal to
       base, nothing measurably slower), and changes `prebuilt/d9mt` and the README's *d9mt*
       section together.
@@ -136,7 +137,7 @@ yet.
 ## Never do these things
 
 - Push directly to `main`.
-- Ship, change or redistribute SWG Legends' launcher or game files (ADR-0001).
+- Ship, change or redistribute SWG Legends' launcher, client or game assets (ADR-0001).
 - Include anything from your SWG Legends account (password, account name, `legends.cfg`,
   `launchersettings.ini`) in an issue or a PR.
 - Commit signing material: the Developer ID, notarization credentials or Sparkle's EdDSA key.

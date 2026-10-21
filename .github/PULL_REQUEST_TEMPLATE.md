@@ -16,7 +16,7 @@ Closes #
 - [ ] A change to updates is tested with `scripts/test-update.sh`.
 - [ ] A bug fix has a regression check that fails without the fix (a test script where one can reach it; otherwise the manual check is described above).
 - [ ] No log or Collect Logs file gains the password, account name, e-mail address, user name or serial numbers; `legends.cfg` and `launchersettings.ini` are never collected.
-- [ ] SWG Legends' launcher and game files stay unchanged and are never shipped.
+- [ ] SWG Legends' programs and game assets stay unchanged and are never shipped; the only game files the app writes are the settings in `options.cfg` and `legends.cfg`.
 - [ ] A new d9mt pin is a d9mt commit that met d9mt's Definition of Done, and updates `prebuilt/d9mt` and the README's *d9mt* section together.
 - [ ] The README describes the new behaviour; terms follow `CONTEXT.md`, and a new term is added in this PR.
 - [ ] A changed decision has an ADR in this PR, or links an existing `accepted` ADR.
