@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask Pharaphobia on Discord
+    url: https://discord.gg/AnV3fZWz2b
+    about: Questions and help from SWGL on Mac's developer.
+  - name: swonmac.com
+    url: https://swonmac.com
+    about: Downloads and the release notes of SWGL on Mac and SWTOR on Mac.
+  - name: Known limitations
+    url: https://github.com/jdrly/swgl-on-mac#readme
+    about: The README's Known limitations (hitches in new areas, the chase camera, ...), before you report them.

@@ -1,0 +1,176 @@
+name: Bug report
+description: Something in SWGL on Mac does not work (first run, the launcher, the game, updates).
+title: ""
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! SWGL on Mac is an unofficial project: please report problems
+        here or to Pharaphobia on [Discord](https://discord.gg/AnV3fZWz2b), never to the SWG
+        Legends team.
+
+        **Please attach the Collect Logs zip:** choose **SWGL on Mac → Collect Logs…** in the
+        launcher's menu bar (or hold Option while opening the app, if the launcher doesn't
+        start); it saves `SWGL-on-Mac-logs-<date>.zip` to your Desktop. Your password, account
+        name, e-mail address and user name are already left out or replaced. Never post your
+        password.
+
+        If you can, write the title as `Context: What goes wrong`, for example
+        `Mouse-look: The camera jumps after alt-tab`.
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened?
+      description: >-
+        What you saw, word for word if there was a message; a screenshot helps. When did it
+        happen (time, in the launcher or in game, which planet or area)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: What should have happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: What you did before it happened. "It happens every time I …" is a good start.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: How bad is it?
+      options:
+        - The game or the launcher doesn't start, or crashes
+        - First run, Rosetta or an update fails
+        - The game runs, but badly (stutter, low frame rate, wrong graphics)
+        - Something doesn't work as described (a setting, the mouse, the saved password)
+        - Cosmetic
+    validations:
+      required: true
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - First run (the welcome window)
+        - The launcher (login, patching, Play)
+        - Starting the game
+        - In the game
+        - Settings, the menus or an update
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Collect Logs zip
+      description: Drag the SWGL-on-Mac-logs-<date>.zip file here.
+      placeholder: Drop the zip here
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: SWGL on Mac version
+      description: SWGL on Mac → About SWGL on Mac.
+      placeholder: "0.0.5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: macos
+    attributes:
+      label: macOS
+      options:
+        - macOS 26
+        - macOS 27
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Chip
+      options:
+        - M1 (any)
+        - M2 (any)
+        - M3 (any)
+        - M4 (any)
+        - M5 (any)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: memory
+    attributes:
+      label: Memory (RAM)
+      description: Apple menu > About This Mac.
+      options:
+        - 8 GB
+        - 16 GB
+        - 18 to 24 GB
+        - 32 GB or more
+    validations:
+      required: true
+
+  - type: dropdown
+    id: renderer
+    attributes:
+      label: Renderer
+      description: The Maintenance menu (hold Option while opening the app) can switch to the wined3d fallback.
+      options:
+        - d9mt (the default)
+        - wined3d (the fallback)
+        - I don't know
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mods
+    attributes:
+      label: Mods or a changed custom.cfg?
+      options:
+        - "No"
+        - "Yes (say which under \"Anything else\")"
+        - I don't know
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Did it work in an earlier version of SWGL on Mac?
+      description: If yes, write the last version that worked under "Anything else".
+      options:
+        - I don't know
+        - "Yes, it worked in an earlier version"
+        - "No, it never worked"
+        - This is the first version I use
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >-
+        Screenshots, display setup (external monitor, refresh rate), settings you changed, mods,
+        the last version that worked, whether it also happens on Windows.
