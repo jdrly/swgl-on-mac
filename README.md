@@ -237,6 +237,12 @@ doesn't start the launcher. `scripts/test-d3dx9.sh` checks this in a sandbox.
   pieces (`--install` also copies it to /Applications). It needs a JDK 9+ (`javac` and
   `jni.h`; Homebrew `openjdk` is found automatically, or set `JAVAC`), Xcode's Swift, and
   Homebrew `mingw-w64` (to strip debug info from Wine's Windows modules).
+- The app icon is the Icon Composer document `src/AppIcon.icon` (`icon.json` and SVG layers:
+  the SWG wordmark, the swoosh, the stars; the navy background is its fill). `build.sh`
+  compiles it with Xcode 26's `actool` into `Assets.car`, the Liquid Glass icon macOS 26 draws
+  with its rim and the Default, Dark, Tinted and Clear styles, and `AppIcon.icns`, the flat
+  fallback the launcher's Dock icon (`-Xdock:icon`) and the app's windows use. Edit it in Icon
+  Composer (inside Xcode.app); `ictool` in Icon Composer.app renders previews of each style.
 - `scripts/release.sh` signs the app with a Developer ID (hardened runtime, entitlements in
   `src/entitlements`), builds the DMG, notarizes and staples it, generates the update feed
   (`appcast.xml` and delta updates, signed with the EdDSA key from Sparkle's `generate_keys`
