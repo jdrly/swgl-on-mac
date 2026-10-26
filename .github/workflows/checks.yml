@@ -74,8 +74,15 @@ jobs:
           app="dist/SWGL on Mac.app"
           find "$app" -name Info.plist -print0 | xargs -0 plutil -lint -s
           for f in Contents/MacOS/SWGLonMac Contents/Resources/main.sh Contents/Resources/wine/bin/wine \
-                   Contents/Resources/jre/Contents/Home/bin/java "Contents/Frameworks/Sparkle.framework"; do
+                   Contents/Resources/jre/Contents/Home/bin/java "Contents/Frameworks/Sparkle.framework" \
+                   Contents/Resources/Assets.car Contents/Resources/AppIcon.icns; do
             [ -e "$app/$f" ] || { echo "missing: $f"; exit 1; }
+          done
+          # The Liquid Glass icon (Assets.car) and its flat fallback, in the app and its helpers (#38)
+          for p in "$app/Contents/Info.plist" "$app"/Contents/Helpers/*.app/Contents/Info.plist; do
+            for k in CFBundleIconName CFBundleIconFile; do
+              [ "$(plutil -extract "$k" raw "$p")" = AppIcon ] || { echo "$k is not AppIcon: ${p#"$app"/}"; exit 1; }
+            done
           done
           size=$(( $(du -sk "$app" | cut -f1) / 1024 ))
           echo "app size: $size MB"
