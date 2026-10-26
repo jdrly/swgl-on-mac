@@ -241,8 +241,10 @@ doesn't start the launcher. `scripts/test-d3dx9.sh` checks this in a sandbox.
   the SWG wordmark, the swoosh, the stars; the navy background is its fill). `build.sh`
   compiles it with Xcode 26's `actool` into `Assets.car`, the Liquid Glass icon macOS 26 draws
   with its rim and the Default, Dark, Tinted and Clear styles, and `AppIcon.icns`, the flat
-  fallback the launcher's Dock icon (`-Xdock:icon`) and the app's windows use. Edit it in Icon
-  Composer (inside Xcode.app); `ictool` in Icon Composer.app renders previews of each style.
+  fallback the app's windows use. Java shows `-Xdock:icon` (that `.icns`) in the Dock until the
+  launcher's first window, when the menus (`src/native/swglmenus.m`) clear Java's image and the
+  Dock draws the Liquid Glass icon. Edit it in Icon Composer (inside Xcode.app); `ictool` in
+  Icon Composer.app renders previews of each style.
 - `scripts/release.sh` signs the app with a Developer ID (hardened runtime, entitlements in
   `src/entitlements`), builds the DMG, notarizes and staples it, generates the update feed
   (`appcast.xml` and delta updates, signed with the EdDSA key from Sparkle's `generate_keys`

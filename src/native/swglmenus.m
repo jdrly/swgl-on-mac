@@ -210,6 +210,9 @@
     collect.target = self;
     [appMenu insertItem:collect atIndex:index++];
     [appMenu insertItem:[NSMenuItem separatorItem] atIndex:index++];
+    // Java shows -Xdock:icon (the flat AppIcon.icns) in the Dock; without an image of the
+    // app's own, the Dock draws the bundle's Liquid Glass icon in the system's icon style (#38).
+    NSApp.applicationIconImage = nil;
     return YES;
 }
 

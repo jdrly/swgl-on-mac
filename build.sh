@@ -211,7 +211,8 @@ printf 'wine %s\njre %s\nd9mt %s\nsparkle %s\napp %s\n' "$WINE_TAG" "$(basename 
   "$(tr '\n' ' ' <"$D9/VERSION")" "$SPARKLE_VERSION" "$APP_VERSION" >"$R/VERSIONS"
 
 # The icon is the Icon Composer document src/AppIcon.icon: Assets.car is the Liquid Glass icon
-# (CFBundleIconName), AppIcon.icns its flat fallback (CFBundleIconFile, -Xdock:icon, the windows).
+# (CFBundleIconName), AppIcon.icns its flat fallback (CFBundleIconFile, the windows, and the
+# Dock until swglmenus.m hands the Dock back to Assets.car).
 # The path is absolute: actool hands it to a shared ibtoold, which resolves a relative one in
 # the directory of whichever build started it.
 icon="$CACHE/AppIcon"
