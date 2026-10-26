@@ -23,13 +23,16 @@ URL (`LAUNCHER_ZIP_URL` in `src/common.sh`) and runs it unchanged and natively o
 JavaFX (arm64); it installs and updates the game (README, *First run*, *Launcher and menus*).
 
 **Game client**
-SWG Legends' 32-bit Direct3D 9 Windows client, `SwgClient_r.exe`, run unchanged in Wine (README;
-`notes/game-mode-for-swtor.md`).
-_Avoid_: “the game” when the launcher could be meant.
+SWG Legends' Direct3D 9 Windows client, `SwgClient_r.exe`, run unchanged in Wine. 64-bit since
+2026-10-26 (SWGL on Mac 0.1.0); before that it was 32-bit, which x87sidecar sped up (#34)
+(README; `notes/game-mode-for-swtor.md`).
+_Avoid_: “the game” when the launcher could be meant; “64-bit test client” for it (that was its
+QA-only predecessor, `c64\SwgClient_Latest-x64.exe`).
 
-**64-bit test client**
-The client the launcher can download for SWG Legends' QA testers; not supported (README, *Known
-limitations*).
+**D3DX**
+Microsoft's D3D9 helper library, `d3dx9_31.dll`, which the 64-bit game client compiles its
+shaders with. SWGL on Mac downloads Microsoft's 64-bit copy into the prefix and the game prefers
+it over Wine's (README, *Microsoft's D3DX*).
 
 **`custom.cfg`**
 The game's user configuration in the game folder, for example `cameraSimpleCollision=1` (README).

@@ -63,6 +63,9 @@ jobs:
       - name: Syntax (bash 3.2)
         run: git ls-files -z '*.sh' | xargs -0 -n 1 /bin/bash -n
 
+      - name: Microsoft's d3dx9_31 and its override are kept up (#35)
+        run: /bin/bash scripts/test-d3dx9.sh
+
       - name: Build
         run: ./build.sh
 

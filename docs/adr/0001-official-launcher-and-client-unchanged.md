@@ -15,8 +15,9 @@ notice; `notes/rosetta-sunset-plan.md`, *Constraint*).
 
 ## Decision
 
-- SWGL on Mac runs SWG Legends' official Windows launcher and 32-bit game client unchanged: the
-  launcher on Zulu 8 with JavaFX, the client in the bundled Wine with d9mt (README).
+- SWGL on Mac runs SWG Legends' official Windows launcher and game client unchanged: the
+  launcher on Zulu 8 with JavaFX, the client in the bundled Wine with d9mt (README). The client
+  is 64-bit since 2026-10-26 (SWGL on Mac 0.1.0) and was 32-bit before.
 - The app doesn't ship the launcher. The welcome window downloads it from SWG Legends' own URL
   on first run, and the launcher installs and updates the game itself, as on Windows (README,
   *First run*).
@@ -34,7 +35,8 @@ notice; `notes/rosetta-sunset-plan.md`, *Constraint*).
   it; problems inside the game's own code, such as the hitches on its translated main thread,
   can't be fixed from outside (README, *Known limitations*; #4).
 - First run needs SWG Legends' download URL to work.
-- Life after Rosetta must keep running the unmodified 32-bit x86 client (ADR-0003).
+- Life after Rosetta must keep running the unmodified x86 client: the 64-bit one (x86_64), and
+  32-bit (i386) clients while other servers use them (ADR-0003).
 
 ## Alternatives considered
 

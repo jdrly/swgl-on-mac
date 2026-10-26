@@ -12,8 +12,9 @@ A native macOS app for playing [SWG Legends](https://swglegends.com) on Apple Si
 > questions, bug reports and logs to Pharaphobia on Discord or as a
 > [GitHub issue](https://github.com/jdrly/swgl-on-mac/issues), never to the SWG Legends team.
 
-The official Java launcher runs natively (Zulu 8 + JavaFX, arm64). The 32-bit DirectX 9 game
-client runs in a bundled Wine (CrossOver 26.3 based, WoW64, with x87 acceleration) on
+The official Java launcher runs natively (Zulu 8 + JavaFX, arm64). The 64-bit DirectX 9 game
+client runs in a bundled Wine (CrossOver 26.3 based, WoW64, with x87 acceleration for 32-bit
+clients) on
 [d9mt](https://github.com/jdrly/d9mt), a Direct3D 9 to Metal driver.
 
 ## Install
@@ -89,7 +90,6 @@ disk space, so turn it off again afterwards.
 - **The chase camera pulls in at every wall.** That is the game's camera collision. The
   in-game option *Simple Camera Collision*, or `cameraSimpleCollision=1` under
   `[ClientGame/FreeChaseCamera]` in `custom.cfg`, makes it calmer.
-- The 64-bit test client that the launcher can download for QA testers is not supported.
 - Apple Silicon only.
 
 ## How it works
@@ -206,6 +206,25 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Fixes SWG needed:
 - `fd76b39` (jdrly/d9mt#1): SWG's 60 Hz fullscreen request no longer becomes a hard frame limit
   of exactly one refresh on top of vsync, which made presentation latch at 30 fps after a hitch
   on 60 Hz displays.
+- `159bec7` (jdrly/d9mt#2): the embedded fixed-function and blit metallibs come in two builds,
+  the SDK's newest Metal language (MSL 4.1) and a Compat one for macOS 26.0, which the driver
+  falls back to where Metal rejects MSL 4.1; before, macOS 26 showed a black screen (#25).
+- `c9ae56d` (d9mt `main`, pinned since SWGL on Mac 0.1.0): texture views are kept alive until the
+  GPU retires them (jdrly/d9mt#24), 4K GPU cost is lower (jdrly/d9mt#18), and the 64-bit build
+  (`d3d9-x64.dll`, `winemetal64.dll`) is the one SWG Legends' 64-bit client uses.
+
+### Microsoft's D3DX
+
+SWG Legends' 64-bit client compiles its HLSL shaders while it loads, with D3DX
+(`d3dx9_31.dll`). Wine's own d3dx9_31 compiles HLSL with vkd3d-shader, which rejects them (a
+variable named `point` is a keyword to it). The app doesn't ship Microsoft's DLL: on the first
+start after installing or updating, `ensure_d3dx9` (`src/common.sh`) downloads Microsoft's DirectX
+End-User Runtime redistributable from Microsoft, or winetricks' mirror of it, takes the 64-bit
+`d3dx9_31.dll` out of it (checked against a pinned SHA-256), keeps it in
+`~/Library/Caches/SWGLonMac/d3dx9` and copies it into the prefix's `system32`. On every start it
+checks that DLL and the override `d3dx9_31=native,builtin` for `SwgClient_r.exe` (read from the
+prefix's `user.reg`, without starting Wine) and repairs either; without them the app says so and
+doesn't start the launcher. `scripts/test-d3dx9.sh` checks this in a sandbox.
 
 ## Building
 
@@ -242,6 +261,9 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Fixes SWG needed:
   `libd3dshared.dylib` from the Game Porting Toolkit, under Apple's license (shipped beside it);
   Apple's D3DMetal is removed, since SWG does not use it.
 - [d9mt](https://github.com/jdrly/d9mt) (zlib, bridge LGPL-2.1+), with DXVK and DXMT code.
+- Microsoft's `d3dx9_31.dll` (64-bit), which the 64-bit game client compiles its shaders with,
+  is not part of the app: each Mac downloads it from Microsoft's DirectX End-User Runtime
+  redistributable (or winetricks' mirror of it) on first start.
 - [Azul Zulu](https://www.azul.com/downloads/) 8 with JavaFX (GPLv2 with Classpath Exception).
   The build changes one thing in it: the SDK version recorded in `bin/java`'s header
   (`vtool -set-build-version`), so macOS gives the launcher's windows the current design.
