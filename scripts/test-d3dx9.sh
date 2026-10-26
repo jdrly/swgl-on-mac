@@ -21,9 +21,8 @@ reg_calls=0 reg_status=0
 wine_cmd() { reg_calls=$((reg_calls + 1)); return "$reg_status"; }
 
 failures=0
-check() { # check <description> <condition...>
-  local what=$1; shift
-  if "$@"; then echo "ok    $what"; else echo "FAIL  $what"; failures=$((failures + 1)); fi
+check() { # check <description> '<condition>': the whole condition, evaluated as one
+  if eval "$2"; then echo "ok    $1"; else echo "FAIL  $1"; failures=$((failures + 1)); fi
 }
 override_reg() {
   printf '%s\n' 'WINE REGISTRY Version 2' '' \
@@ -37,25 +36,25 @@ D3DX9_31_SHA256="$(sha256_of "$SANDBOX/good.dll")"
 
 cp "$SANDBOX/good.dll" "$DLL"; : >"$PREFIX/user.reg"; reg_calls=0
 ensure_d3dx9 >/dev/null; status=$?
-check "right DLL, no override: the override is set" [ "$status" = 0 ] && [ "$reg_calls" = 1 ]
+check "right DLL, no override: the override is set" '[ "$status" = 0 ] && [ "$reg_calls" = 1 ]'
 
 override_reg; reg_calls=0
 ensure_d3dx9 >/dev/null; status=$?
-check "right DLL and override: nothing to do, no Wine started" [ "$status" = 0 ] && [ "$reg_calls" = 0 ]
+check "right DLL and override: nothing to do, no Wine started" '[ "$status" = 0 ] && [ "$reg_calls" = 0 ]'
 
 : >"$PREFIX/user.reg"; reg_status=1; reg_calls=0
 out="$(ensure_d3dx9)"; status=$?
-check "failed registry write: a failure, no success logged" [ "$status" != 0 ] && [ "${out#*prefer}" = "$out" ]
+check "failed registry write: a failure, no success logged" '[ "$status" != 0 ] && [ "${out#*prefer}" = "$out" ]'
 reg_status=0
 
 printf 'Wine builtin DLL\n' >"$DLL"; mkdir -p "$CACHES/d3dx9"; cp "$SANDBOX/good.dll" "$CACHES/d3dx9/d3dx9_31.dll"; override_reg
 ensure_d3dx9 >/dev/null; status=$?
-check "Wine's DLL in the prefix: Microsoft's comes back from the cache" [ "$status" = 0 ] && cmp -s "$DLL" "$SANDBOX/good.dll"
+check "Wine's DLL in the prefix: Microsoft's comes back from the cache" '[ "$status" = 0 ] && cmp -s "$DLL" "$SANDBOX/good.dll"'
 
 printf 'Wine builtin DLL\n' >"$DLL"; rm -f "$CACHES/d3dx9/d3dx9_31.dll"
 DXREDIST_URLS=("file://$SANDBOX/missing-1.exe" "file://$SANDBOX/missing-2.exe")
 ensure_d3dx9 >/dev/null 2>&1; status=$?
-check "no source works: a failure, the prefix keeps Wine's DLL" [ "$status" != 0 ] && grep -q 'Wine builtin' "$DLL"
+check "no source works: a failure, the prefix keeps Wine's DLL" '[ "$status" != 0 ] && grep -q "Wine builtin" "$DLL"'
 
 if [ -n "${TEST_DXREDIST:-}" ]; then
   D3DX9_31_SHA256=84167b7df7e97c63f0cc15c1d272cdc7bba942f6f36a8801aec9840825891d0d
@@ -63,7 +62,7 @@ if [ -n "${TEST_DXREDIST:-}" ]; then
   printf 'Wine builtin DLL\n' >"$DLL"; rm -rf "$CACHES/d3dx9"; override_reg
   ensure_d3dx9 >/dev/null 2>&1; status=$?
   check "real installer, first source missing: the second gives Microsoft's DLL" \
-    [ "$status" = 0 ] && [ "$(sha256_of "$DLL")" = "$D3DX9_31_SHA256" ]
+    '[ "$status" = 0 ] && [ "$(sha256_of "$DLL")" = "$D3DX9_31_SHA256" ]'
 fi
 
 [ "$failures" = 0 ] && echo "all passed" || { echo "$failures failed"; exit 1; }
