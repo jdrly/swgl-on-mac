@@ -82,7 +82,7 @@ serial numbers are left out or replaced. Turn on **Settings → Debug Mode** onl
 it makes the logs much more detailed for the next game start, but costs some performance and
 disk space, so turn it off again afterwards.
 
-## Known limitations (0.0.5, early beta)
+## Known limitations (0.1.0, early beta)
 
 - **Short hitches when entering new areas.** The game loads new content on its main thread,
   and on a Mac that code runs translated (Rosetta). Profiling shows the time is the game's own
