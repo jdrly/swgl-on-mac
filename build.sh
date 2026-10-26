@@ -20,13 +20,6 @@ WINE_SHA256=1976c3310a1f8be2f8e9a46fcb524f77b4316df3d281d94af2c8542bef60456d
 SPARKLE_VERSION=2.10.0
 SPARKLE_URL=https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz
 SPARKLE_SHA256=c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
-# Microsoft's D3DX 9 for 64-bit Windows (d3dx9_31.dll, October 2006) from the DirectX
-# End-User Runtime redistributable: SWG Legends' 64-bit client compiles its HLSL shaders with
-# it, and Wine's own d3dx9_31 (vkd3d-shader) rejects them (a variable named "point"). It ships
-# in the app unmodified (Resources/d3dx9; ensure_d3dx9 in src/common.sh).
-DXREDIST_URL=https://download.microsoft.com/download/8/4/A/84A35BF1-DAFE-4AE8-82AF-AD2AE20B6B14/directx_Jun2010_redist.exe
-DXREDIST_SHA256=053f76dcbb28802e23341b6a787e3b0791c0fa5c8d4d011b1044172dbf89c73b
-D3DX9_31_SHA256=84167b7df7e97c63f0cc15c1d272cdc7bba942f6f36a8801aec9840825891d0d
 
 # SWGL_VERSION overrides the version for test builds (e.g. two versions to test updates with).
 APP_VERSION=${SWGL_VERSION:-0.0.5}
@@ -60,17 +53,6 @@ if [ ! -d "$SPARKLE/Sparkle.framework" ]; then
   rm -rf "$SPARKLE.part" && mkdir -p "$SPARKLE.part"
   tar -xJf "$sparkle_txz" -C "$SPARKLE.part"
   rm -rf "$SPARKLE" && mv "$SPARKLE.part" "$SPARKLE"
-fi
-# d3dx9_31.dll out of the redistributable (a cabinet of cabinets; bsdtar reads them).
-D3DX="$CACHE/d3dx9_31-$D3DX9_31_SHA256/d3dx9_31.dll"
-if [ ! -f "$D3DX" ]; then
-  dxredist=$(fetch "$DXREDIST_URL" "$DXREDIST_SHA256")
-  rm -rf "$CACHE/d3dx9_31.part" && mkdir -p "$CACHE/d3dx9_31.part"
-  tar -xf "$dxredist" -C "$CACHE/d3dx9_31.part" OCT2006_d3dx9_31_x64.cab
-  tar -xf "$CACHE/d3dx9_31.part/OCT2006_d3dx9_31_x64.cab" -C "$CACHE/d3dx9_31.part" d3dx9_31.dll
-  echo "$D3DX9_31_SHA256  $CACHE/d3dx9_31.part/d3dx9_31.dll" | shasum -a 256 -c --quiet
-  mkdir -p "${D3DX%/*}" && mv "$CACHE/d3dx9_31.part/d3dx9_31.dll" "$D3DX"
-  rm -rf "$CACHE/d3dx9_31.part"
 fi
 
 echo "Assembling $APP"
@@ -175,21 +157,6 @@ install -m 644 src/d9mt.conf "$R/d9mt.conf"
 # d9mt's licenses and third-party notices must ship with its binaries.
 mkdir -p "$R/licenses/d9mt"
 cp -R "$D9/LICENSE" "$D9/LICENSES" "$D9/THIRD_PARTY_NOTICES.md" "$R/licenses/d9mt/"
-# Microsoft's d3dx9_31 for the 64-bit client (see DXREDIST_URL); the wrapper puts it into the
-# prefix. The notice says where it comes from and under which terms it ships.
-mkdir -p "$R/d3dx9/x86_64" "$R/licenses/microsoft-d3dx9"
-install -m 644 "$D3DX" "$R/d3dx9/x86_64/d3dx9_31.dll"
-cat >"$R/licenses/microsoft-d3dx9/NOTICE.txt" <<EOF
-d3dx9_31.dll (64-bit, October 2006) is Microsoft's D3DX 9 library,
-Copyright (c) Microsoft Corporation. All rights reserved.
-
-It is taken unmodified from Microsoft's DirectX End-User Runtime redistributable
-($DXREDIST_URL,
-SHA-256 $DXREDIST_SHA256; the file's SHA-256 is $D3DX9_31_SHA256)
-and is distributed with SWGL on Mac, which uses it to run SWG Legends' 64-bit game client,
-as redistributable code under the terms of Microsoft's DirectX SDK licence. It is not part
-of SWGL on Mac's own licence. Microsoft does not endorse or support SWGL on Mac.
-EOF
 # Mac driver with raw mouse-look and stale SetCursorPos handling (patches/winemac-swg.patch)
 # and an input thread fed by GCMouse (patches/winemac-input.patch), built for exactly this
 # Wine by scripts/build-winemac.sh.

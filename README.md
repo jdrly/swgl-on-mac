@@ -217,10 +217,14 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Fixes SWG needed:
 
 SWG Legends' 64-bit client compiles its HLSL shaders while it loads, with D3DX
 (`d3dx9_31.dll`). Wine's own d3dx9_31 compiles HLSL with vkd3d-shader, which rejects them (a
-variable named `point` is a keyword to it). `build.sh` takes Microsoft's 64-bit `d3dx9_31.dll`
-from the DirectX End-User Runtime redistributable (pinned URL and checksums) and ships it
-unmodified in `Resources/d3dx9`; on every start `ensure_d3dx9` (`src/common.sh`) keeps it in the
-prefix's `system32` and sets the override `d3dx9_31=native,builtin` for `SwgClient_r.exe`.
+variable named `point` is a keyword to it). The app doesn't ship Microsoft's DLL: on the first
+start after installing or updating, `ensure_d3dx9` (`src/common.sh`) downloads Microsoft's DirectX
+End-User Runtime redistributable from Microsoft, or winetricks' mirror of it, takes the 64-bit
+`d3dx9_31.dll` out of it (checked against a pinned SHA-256), keeps it in
+`~/Library/Caches/SWGLonMac/d3dx9` and copies it into the prefix's `system32`. On every start it
+checks that DLL and the override `d3dx9_31=native,builtin` for `SwgClient_r.exe` (read from the
+prefix's `user.reg`, without starting Wine) and repairs either; without them the app says so and
+doesn't start the launcher. `scripts/test-d3dx9.sh` checks this in a sandbox.
 
 ## Building
 
@@ -257,9 +261,9 @@ prefix's `system32` and sets the override `d3dx9_31=native,builtin` for `SwgClie
   `libd3dshared.dylib` from the Game Porting Toolkit, under Apple's license (shipped beside it);
   Apple's D3DMetal is removed, since SWG does not use it.
 - [d9mt](https://github.com/jdrly/d9mt) (zlib, bridge LGPL-2.1+), with DXVK and DXMT code.
-- Microsoft's `d3dx9_31.dll` (64-bit), unmodified from the DirectX End-User Runtime
-  redistributable, which the 64-bit game client compiles its shaders with; shipped as
-  redistributable code under Microsoft's DirectX SDK licence (`Resources/licenses/microsoft-d3dx9`).
+- Microsoft's `d3dx9_31.dll` (64-bit), which the 64-bit game client compiles its shaders with,
+  is not part of the app: each Mac downloads it from Microsoft's DirectX End-User Runtime
+  redistributable (or winetricks' mirror of it) on first start.
 - [Azul Zulu](https://www.azul.com/downloads/) 8 with JavaFX (GPLv2 with Classpath Exception).
   The build changes one thing in it: the SDK version recorded in `bin/java`'s header
   (`vtool -set-build-version`), so macOS gives the launcher's windows the current design.

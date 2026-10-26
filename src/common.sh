@@ -127,18 +127,69 @@ apply_mac_driver_settings() {
   wine_cmd reg add "$key" /v RawMouseGameControllerScale /t REG_SZ /d "$MOUSE_SPEED" /f >/dev/null
 }
 
+# Microsoft's 64-bit d3dx9_31.dll (October 2006) from the DirectX End-User Runtime, which
+# SWG Legends' 64-bit client compiles its HLSL shaders with: Wine's own d3dx9_31
+# (vkd3d-shader) rejects them ("unexpected KW_POINT": a variable named point). The app doesn't
+# ship it (Microsoft's terms cover Windows); each Mac gets it from Microsoft's redistributable,
+# or winetricks' mirror of it. The DLL's checksum is what counts: the mirror's installer is an
+# older build of the same redistributable.
+D3DX9_31_SHA256=84167b7df7e97c63f0cc15c1d272cdc7bba942f6f36a8801aec9840825891d0d
+DXREDIST_URLS=(
+  https://download.microsoft.com/download/8/4/A/84A35BF1-DAFE-4AE8-82AF-AD2AE20B6B14/directx_Jun2010_redist.exe
+  https://files.holarse-linuxgaming.de/mirrors/microsoft/directx_Jun2010_redist.exe
+)
+D3DX9_OVERRIDE_KEY='HKCU\Software\Wine\AppDefaults\SwgClient_r.exe\DllOverrides'
+
+sha256_of() { shasum -a 256 "$1" 2>/dev/null | cut -d' ' -f1; }
+
+# fetch_d3dx9 <file>: d3dx9_31.dll out of the redistributable (a cabinet of cabinets, which
+# macOS's tar reads), from the first source that gives the expected DLL.
+fetch_d3dx9() {
+  local out=$1 tmp url
+  tmp="$(mktemp -d "${out%/*}/download.XXXXXX")" || return 1
+  for url in "${DXREDIST_URLS[@]}"; do
+    echo "Downloading d3dx9_31 from $url"
+    if curl -fsSL --retry 2 -o "$tmp/redist.exe" "$url" &&
+       tar -xf "$tmp/redist.exe" -C "$tmp" OCT2006_d3dx9_31_x64.cab &&
+       tar -xf "$tmp/OCT2006_d3dx9_31_x64.cab" -C "$tmp" d3dx9_31.dll &&
+       [ "$(sha256_of "$tmp/d3dx9_31.dll")" = "$D3DX9_31_SHA256" ] &&
+       mv -f "$tmp/d3dx9_31.dll" "$out"; then
+      rm -rf "$tmp"
+      return 0
+    fi
+    echo "  no usable d3dx9_31 from there"
+    rm -rf "${tmp:?}"/*
+  done
+  rm -rf "$tmp"
+  return 1
+}
+
+# Whether the game's override (native d3dx9_31 first) is in the prefix's user.reg, read as text
+# so no Wine starts for it.
+d3dx9_override_set() {
+  awk -v sec='[Software\\\\Wine\\\\AppDefaults\\\\SwgClient_r.exe\\\\DllOverrides]' '
+    index($0, sec) == 1 { in_s = 1; next }
+    /^\[/ { in_s = 0 }
+    in_s && $0 == "\"d3dx9_31\"=\"native,builtin\"" { found = 1 }
+    END { exit !found }' "$PREFIX/user.reg" 2>/dev/null
+}
+
+# ensure_d3dx9 [--prepare]: Microsoft's d3dx9_31 in the prefix (a Wine update's wineboot puts
+# Wine's back) and the game set to prefer it, checked on every start. Fails when either can't
+# be done.
 ensure_d3dx9() {
-  # SWG Legends' 64-bit client compiles its HLSL shaders with D3DX, and Wine's own d3dx9_31
-  # (vkd3d-shader) rejects them ("unexpected KW_POINT": a variable named point). Microsoft's,
-  # shipped in Resources/d3dx9 (build.sh), compiles them as on Windows: keep it in the prefix
-  # (a Wine update's wineboot puts Wine's back) and have the game prefer it.
-  local src="$RES/d3dx9/x86_64/d3dx9_31.dll" dst="$PREFIX/drive_c/windows/system32/d3dx9_31.dll"
-  [ -f "$src" ] || return 0
-  cmp -s "$src" "$dst" && return 0
-  cp "$src" "$dst" || { echo "Could not install Microsoft's d3dx9_31 into the prefix"; return 0; }
-  wine_cmd reg add 'HKCU\Software\Wine\AppDefaults\SwgClient_r.exe\DllOverrides' \
-    /v d3dx9_31 /t REG_SZ /d native,builtin /f >/dev/null
-  echo "Installed Microsoft's d3dx9_31 (64-bit) into the prefix"
+  local dst="$PREFIX/drive_c/windows/system32/d3dx9_31.dll" cache="$CACHES/d3dx9/d3dx9_31.dll"
+  if [ "$(sha256_of "$dst")" != "$D3DX9_31_SHA256" ]; then
+    if [ "$(sha256_of "$cache")" != "$D3DX9_31_SHA256" ]; then
+      [ "${1:-}" = --prepare ] || swgl_notify "Downloading a part of DirectX the game needs, this takes a moment…"
+      mkdir -p "${cache%/*}" && fetch_d3dx9 "$cache" || return 1
+    fi
+    cp "$cache" "$dst" || return 1
+    echo "Installed Microsoft's d3dx9_31 (64-bit) into the prefix"
+  fi
+  d3dx9_override_set && return 0
+  wine_cmd reg add "$D3DX9_OVERRIDE_KEY" /v d3dx9_31 /t REG_SZ /d native,builtin /f >/dev/null || return 1
+  echo "Set the game to prefer Microsoft's d3dx9_31"
 }
 
 apply_prefix_settings() {

@@ -68,7 +68,11 @@ ensure_prefix() {
   # The game lives outside the prefix; expose it as drive S: so the client sees S:\ as its folder.
   ln -sfn "$GAME" "$PREFIX/dosdevices/$GAME_DRIVE"
   apply_prefix_settings
-  ensure_d3dx9
+  ensure_d3dx9 "${1:-}" || {
+    echo "Microsoft's d3dx9_31 is not set up; the game can't compile its shaders without it"
+    swgl_alert "SWGL on Mac couldn't download a part of DirectX the game needs. Check your internet connection, then open SWGL on Mac again."
+    exit 1
+  }
 }
 
 ensure_launcher() {

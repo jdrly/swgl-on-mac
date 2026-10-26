@@ -13,6 +13,10 @@ Rosetta; from macOS 28 it remains only for a subset of older games that Apple ha
 CodeWeavers expect Wine apps left on Rosetta not to work there (`notes/rosetta-sunset-plan.md` §1).
 Tracked in #20, with milestones M1–M9 (#11–#19).
 
+Since 2026-10-26 SWG Legends' client is 64-bit (SWGL on Mac 0.1.0), so the x86_64 path (ARM64EC
+under FEX, with d9mt's ARM64EC build) is the one that matters most; the i386 path stays for 32-bit
+clients.
+
 ## Decision (proposed)
 
 Rank 1 of the plan: a native arm64 Wine, with FEX translating x86 code through Wine's WoW64 layer

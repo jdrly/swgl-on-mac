@@ -31,8 +31,8 @@ QA-only predecessor, `c64\SwgClient_Latest-x64.exe`).
 
 **D3DX**
 Microsoft's D3D9 helper library, `d3dx9_31.dll`, which the 64-bit game client compiles its
-shaders with. SWGL on Mac ships Microsoft's 64-bit copy and the game prefers it over Wine's
-(README, *Microsoft's D3DX*).
+shaders with. SWGL on Mac downloads Microsoft's 64-bit copy into the prefix and the game prefers
+it over Wine's (README, *Microsoft's D3DX*).
 
 **`custom.cfg`**
 The game's user configuration in the game folder, for example `cameraSimpleCollision=1` (README).
