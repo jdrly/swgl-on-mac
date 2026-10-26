@@ -127,6 +127,20 @@ apply_mac_driver_settings() {
   wine_cmd reg add "$key" /v RawMouseGameControllerScale /t REG_SZ /d "$MOUSE_SPEED" /f >/dev/null
 }
 
+ensure_d3dx9() {
+  # SWG Legends' 64-bit client compiles its HLSL shaders with D3DX, and Wine's own d3dx9_31
+  # (vkd3d-shader) rejects them ("unexpected KW_POINT": a variable named point). Microsoft's,
+  # shipped in Resources/d3dx9 (build.sh), compiles them as on Windows: keep it in the prefix
+  # (a Wine update's wineboot puts Wine's back) and have the game prefer it.
+  local src="$RES/d3dx9/x86_64/d3dx9_31.dll" dst="$PREFIX/drive_c/windows/system32/d3dx9_31.dll"
+  [ -f "$src" ] || return 0
+  cmp -s "$src" "$dst" && return 0
+  cp "$src" "$dst" || { echo "Could not install Microsoft's d3dx9_31 into the prefix"; return 0; }
+  wine_cmd reg add 'HKCU\Software\Wine\AppDefaults\SwgClient_r.exe\DllOverrides' \
+    /v d3dx9_31 /t REG_SZ /d native,builtin /f >/dev/null
+  echo "Installed Microsoft's d3dx9_31 (64-bit) into the prefix"
+}
+
 apply_prefix_settings() {
   # Registry writes start Wine, so only redo them when the settings changed.
   local stamp="$PREFIX/.swgl-applied" want="retina=$RETINA baseline=d9mt-1 mouse=$MOUSE_SPEED" had

@@ -68,6 +68,7 @@ ensure_prefix() {
   # The game lives outside the prefix; expose it as drive S: so the client sees S:\ as its folder.
   ln -sfn "$GAME" "$PREFIX/dosdevices/$GAME_DRIVE"
   apply_prefix_settings
+  ensure_d3dx9
 }
 
 ensure_launcher() {
