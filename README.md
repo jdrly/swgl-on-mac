@@ -209,9 +209,28 @@ licenses and third-party notices in `Resources/licenses/d9mt`. Fixes SWG needed:
 - `159bec7` (jdrly/d9mt#2): the embedded fixed-function and blit metallibs come in two builds,
   the SDK's newest Metal language (MSL 4.1) and a Compat one for macOS 26.0, which the driver
   falls back to where Metal rejects MSL 4.1; before, macOS 26 showed a black screen (#25).
-- `c9ae56d` (d9mt `main`, pinned since SWGL on Mac 0.1.0): texture views are kept alive until the
-  GPU retires them (jdrly/d9mt#24), 4K GPU cost is lower (jdrly/d9mt#18), and the 64-bit build
+- `c9ae56d` (pinned in SWGL on Mac 0.1.0): texture views are kept alive until the GPU retires
+  them (jdrly/d9mt#24), 4K GPU cost is lower (jdrly/d9mt#18), and the 64-bit build
   (`d3d9-x64.dll`, `winemetal64.dll`) is the one SWG Legends' 64-bit client uses.
+- `73511be` (d9mt `main`, pinned since SWGL on Mac 0.1.1; SWTOR on Mac 0.1.6 ships the same
+  build):
+  - The macOS 26 black screen after the first loading screen (#40, jdrly/d9mt#110). `c9ae56d`
+    tagged every metallib its AIR compiler writes as AIR 2.9, and Metal reads that `VERS` tag as
+    the library's deployment target: macOS 26 supports up to AIR 2.8, so it rejected every game
+    shader. Before macOS 27 each metallib now carries its bitcode's own version, AIR 2.7; on
+    macOS 27 and later it stays 2.9, byte-identical to before. The version comes from
+    `kern.osproductversion` (`D9MT_AIR_MACOS=<major>` overrides it), and `wine.log` names the
+    choice: `d9mt: AIR metallibs tagged for macOS <n> (…)`. `scripts/test-d9mt-air.sh` checks
+    the prebuilt bridge.
+  - The AIR cache is keyed on the shader codegen (jdrly/d9mt#122). Its lineage names `c9ae56d`'s
+    bridge (LC_UUID `2BBB585C`), so on macOS 27 players keep the shaders 0.1.0 compiled; on
+    macOS 26 that cache has 2.9 tags and starts cold.
+  - A draw whose vertex range runs past a buffer's end no longer reads past the buffer's copy,
+    which crashed when it crossed into an unmapped page (jdrly/d9mt#57).
+  - A texture sampled before its first write reads zero, as on Windows, instead of undefined
+    memory, which an M4 showed as magenta icons (jdrly/d9mt#105).
+  - An MSAA resolve of part of a surface lands at its offset instead of resolving the whole
+    surface into (0,0) (jdrly/d9mt#125).
 
 ### Microsoft's D3DX
 

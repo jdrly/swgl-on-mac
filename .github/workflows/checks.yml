@@ -66,6 +66,11 @@ jobs:
       - name: Microsoft's d3dx9_31 and its override are kept up (#35)
         run: /bin/bash scripts/test-d3dx9.sh
 
+      # On this macOS 26 runner the unset run must tag AIR 2.7 too, and it loads the metallibs
+      # where Metal has a device.
+      - name: d9mt tags its shaders for the macOS it runs on (#40)
+        run: /bin/bash scripts/test-d9mt-air.sh
+
       - name: Build
         run: ./build.sh
 
