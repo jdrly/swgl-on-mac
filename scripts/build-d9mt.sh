@@ -19,7 +19,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 REPO=https://github.com/jdrly/d9mt.git
-COMMIT=c9ae56d4551ae4dbf9ea6e38492f3e28a8192940
+COMMIT=73511bed36cf9264d8421f880e7d1bdde32952d9
 MACOS_MIN=26.0
 V="$ROOT/.cache/d9mt"
 OUT="$ROOT/prebuilt/d9mt"
