@@ -1,0 +1,82 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.15000,0.20000,0.36000,1.00000",
+          "display-p3:0.02000,0.03000,0.08000,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.07000,0.09000,0.18000,1.00000",
+          "display-p3:0.00000,0.00000,0.02000,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "swg.svg",
+          "name": "SWG"
+        },
+        {
+          "image-name": "legends.svg",
+          "name": "LEGENDS"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.6
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "name": "wordmark"
+    },
+    {
+      "layers": [
+        {
+          "image-name": "swoosh.svg",
+          "name": "swoosh"
+        }
+      ],
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.7
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.25
+      },
+      "name": "swoosh"
+    },
+    {
+      "layers": [
+        {
+          "image-name": "stars.svg",
+          "name": "stars"
+        }
+      ],
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "name": "stars"
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

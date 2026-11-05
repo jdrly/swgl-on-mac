@@ -210,19 +210,20 @@ rm -rf "$R/wine/lib/external/D3DMetal.framework" "$R/wine/lib/wine/dxgi/gptk"
 printf 'wine %s\njre %s\nd9mt %s\nsparkle %s\napp %s\n' "$WINE_TAG" "$(basename "$JRE_URL" .tar.gz)" \
   "$(tr '\n' ' ' <"$D9/VERSION")" "$SPARKLE_VERSION" "$APP_VERSION" >"$R/VERSIONS"
 
-iconset="$CACHE/AppIcon.iconset"
-rm -rf "$iconset"
-# The icon is the logo from SWGL's launcher (its download is cached; not shipped in the app).
-launcher_zip="$CACHE/launcher/SWGLegendsLauncher.zip"
-[ -f "$launcher_zip" ] || { mkdir -p "$CACHE/launcher"; curl -fL --progress-bar -o "$launcher_zip.part" \
-  "$(sed -n 's/^LAUNCHER_ZIP_URL=//p' src/common.sh)" && mv "$launcher_zip.part" "$launcher_zip"; }
-unzip -p "$launcher_zip" SWGLegendsLauncher.exe >"$CACHE/launcher/SWGLegendsLauncher.exe"
-unzip -p "$CACHE/launcher/SWGLegendsLauncher.exe" launcher/images/logo.png >"$CACHE/logo.png" 2>/dev/null || true
-swift src/make-icon.swift "$CACHE/logo.png" "$iconset"
-iconutil -c icns "$iconset" -o "$R/AppIcon.icns"
+# The icon is the Icon Composer document src/AppIcon.icon: Assets.car is the Liquid Glass icon
+# (CFBundleIconName), AppIcon.icns its flat fallback (CFBundleIconFile, the windows, and the
+# Dock until swglmenus.m hands the Dock back to Assets.car).
+# The path is absolute: actool hands it to a shared ibtoold, which resolves a relative one in
+# the directory of whichever build started it.
+icon="$CACHE/AppIcon"
+rm -rf "$icon"
+mkdir -p "$icon"
+xcrun actool "$ROOT/src/AppIcon.icon" --compile "$icon" --platform macosx --minimum-deployment-target 26.0 \
+  --app-icon AppIcon --output-partial-info-plist "$icon/partial.plist" >/dev/null
+cp "$icon/Assets.car" "$icon/AppIcon.icns" "$R/"
 # helper_plist <Contents dir> <executable> <bundle ID suffix> [extra plist lines]
 helper_plist() {
-  cp "$R/AppIcon.icns" "$1/Resources/AppIcon.icns"
+  cp "$R/Assets.car" "$R/AppIcon.icns" "$1/Resources/"
   cat >"$1/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -231,6 +232,7 @@ helper_plist() {
 	<key>CFBundleExecutable</key><string>$2</string>
 	<key>CFBundleIdentifier</key><string>io.github.jdrly.swglonmac.$3</string>
 	<key>CFBundleName</key><string>SWGL on Mac</string>
+	<key>CFBundleIconName</key><string>AppIcon</string>
 	<key>CFBundleIconFile</key><string>AppIcon</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
