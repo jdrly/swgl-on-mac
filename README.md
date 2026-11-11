@@ -274,9 +274,11 @@ doesn't start the launcher. `scripts/test-d3dx9.sh` checks this in a sandbox.
 
 - SWG Legends, its launcher and game files belong to the SWG Legends team; Star Wars Galaxies
   and related marks belong to their owners.
-- [Wine](https://www.winehq.org) (LGPL-2.1+), built by
-  [athei/wine-build](https://github.com/athei/wine-build) from CodeWeavers' CrossOver sources;
-  this repository's changes to it are in `patches/`. The bundled Wine includes Apple's
+- [Wine](https://www.winehq.org) (LGPL-2.1+), built by athei
+  ([athei/mach9](https://github.com/athei/mach9), formerly athei/wine-build) from CodeWeavers'
+  CrossOver 26.3 sources with athei's patches. `build.sh` downloads that build from
+  [jdrly/wine-engine](https://github.com/jdrly/wine-engine), which also keeps the Wine source it
+  was built from; this repository's changes to it are in `patches/`. The bundled Wine includes Apple's
   `libd3dshared.dylib` from the Game Porting Toolkit, under Apple's license (shipped beside it);
   Apple's D3DMetal is removed, since SWG does not use it.
 - [d9mt](https://github.com/jdrly/d9mt) (zlib, bridge LGPL-2.1+), with DXVK and DXMT code.

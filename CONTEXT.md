@@ -46,8 +46,8 @@ The game's and the launcher's files that hold the account password; never collec
 
 **Wine (the bundled Wine)**
 The x86_64 Wine inside the app: athei/wine-build `cx-26.3.0-8` (CrossOver 26.3 sources, WoW64,
-with x87sidecar), downloaded by `build.sh` at a pinned sha256, with Apple's D3DMetal removed
-(README; `build.sh`). Unlike SWTOR on Mac, it is bundled in the app.
+with x87sidecar), which `build.sh` downloads from jdrly/wine-engine at a pinned sha256, with
+Apple's D3DMetal removed (README; `build.sh`). Unlike SWTOR on Mac, it is bundled in the app.
 _Avoid_: “engine” in this repository's user-facing text, “bottle”.
 
 **Prefix**

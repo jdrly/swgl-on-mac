@@ -15,6 +15,9 @@ ROOT="$PWD"
 
 WINE_TAG=cx-26.3.0-8
 WINE_COMMIT=d23b39774528237cafe49f9a073286f854b779c0   # athei/wine-build release notes for $WINE_TAG
+# athei/wine no longer has this commit on a branch; jdrly/wine-engine keeps its source archive.
+WINE_SRC_URL=https://github.com/jdrly/wine-engine/releases/download/$WINE_TAG/wine-$WINE_COMMIT-source.tar.gz
+WINE_SRC_SHA256=7002111d61bbf28e88cc2504080747d27d074907a7e278f6c78cf6cefe09746e
 MINGW_URL=https://github.com/mstorsjo/llvm-mingw/releases/download/20261006/llvm-mingw-20261006-ucrt-macos-universal.tar.xz
 MINGW_SHA256=a7a19b11048e89372637d26279cdb7c430ed3cf8c1e224310421312bf986ebf6
 
@@ -27,7 +30,8 @@ if [ ! -d "$W/mingw" ]; then
   mkdir "$W/mingw" && tar -xJf "$W/mingw.tar.xz" -C "$W/mingw" --strip-components 1
 fi
 if [ ! -d "$W/src-$WINE_COMMIT" ]; then
-  curl -fL --progress-bar -o "$W/wine-src.tar.gz" "https://codeload.github.com/athei/wine/tar.gz/$WINE_COMMIT"
+  curl -fL --progress-bar -o "$W/wine-src.tar.gz" "$WINE_SRC_URL"
+  echo "$WINE_SRC_SHA256  $W/wine-src.tar.gz" | shasum -a 256 -c --quiet
   mkdir "$W/src-$WINE_COMMIT" && tar -xzf "$W/wine-src.tar.gz" -C "$W/src-$WINE_COMMIT" --strip-components 1
 fi
 
